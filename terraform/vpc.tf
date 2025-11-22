@@ -1,6 +1,6 @@
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
-  tags       = { Name = "project-vpc" }
+  tags       = { Name = "capstone-grp1-vpc" }
 }
 
 resource "aws_internet_gateway" "main" {
