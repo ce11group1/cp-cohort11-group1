@@ -6,7 +6,7 @@ resource "aws_iot_thing" "this" {
 }
 
 #######################################
-# 2. IoT Policy
+# 2. IoT Policy (basic connect/publish/subscribe/receive)
 #######################################
 resource "aws_iot_policy" "this" {
   name = "${var.thing_name}-policy"
@@ -29,7 +29,7 @@ resource "aws_iot_policy" "this" {
 }
 
 #######################################
-# 3. Certificate (optional)
+# 3. IoT Certificate (optional)
 #######################################
 resource "aws_iot_certificate" "this" {
   count  = var.create_certificate ? 1 : 0
@@ -37,7 +37,7 @@ resource "aws_iot_certificate" "this" {
 }
 
 #######################################
-# 4. Attach policy & certificate to Thing
+# 4. Attach Policy & Certificate to Thing
 #######################################
 resource "aws_iot_policy_attachment" "policy_attach" {
   count  = var.create_certificate ? 1 : 0
@@ -63,7 +63,7 @@ resource "aws_iot_topic_rule" "telemetry_rule" {
   sql = "SELECT * FROM '${var.iot_topic}'"
 
   #################################
-  # SNS Action (optional, matches your diagram)
+  # Optional SNS Action (matches your diagram)
   #################################
   dynamic "sns" {
     for_each = var.enable_sns_action ? [1] : []

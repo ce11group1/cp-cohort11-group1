@@ -1,12 +1,14 @@
 variable "thing_name" {
   description = "Name of the IoT Thing"
   type        = string
+  # Default so you always get this Thing unless you override
+  default     = "ce11-grp1-sensor-thing"
 }
 
 variable "iot_topic" {
   description = "MQTT topic the device publishes to"
   type        = string
-  # Change if your topic is different
+  # Adjust if your topic is different
   default     = "cet11/grp1/telemetry"
 }
 
@@ -16,7 +18,7 @@ variable "create_certificate" {
   default     = true
 }
 
-# ---- IoT Rule → SNS integration ----
+# ---------- Optional: IoT Rule → SNS action ----------
 
 variable "enable_sns_action" {
   description = "Enable SNS action in IoT Topic Rule"
@@ -25,13 +27,13 @@ variable "enable_sns_action" {
 }
 
 variable "sns_topic_arn" {
-  description = "SNS topic ARN to which IoT Rule will publish"
+  description = "SNS topic ARN to which IoT Rule will publish (required if enable_sns_action = true)"
   type        = string
   default     = null
 }
 
 variable "sns_role_arn" {
-  description = "IAM Role ARN that IoT Rule will assume to publish to SNS"
+  description = "IAM Role ARN that IoT Rule will assume to publish to SNS (required if enable_sns_action = true)"
   type        = string
   default     = null
 }
