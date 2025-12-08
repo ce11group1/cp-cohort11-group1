@@ -8,7 +8,7 @@ resource "aws_instance" "app" {
   associate_public_ip_address = true
 
   tags = {
-    Name = "capstone-grp1-ec2"
+    Name = "ce11-capstone-grp1-ec2"
   }
 }
 
