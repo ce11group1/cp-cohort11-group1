@@ -137,3 +137,4 @@ EOF
     aws_lambda_function.alert_handler
   ]
 }
+
