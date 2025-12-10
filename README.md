@@ -1,3 +1,9 @@
+Here is the **complete, consolidated "Implementation, Operations & Troubleshooting Guide"** for your Capstone Project.
+
+This document integrates all the prerequisites, deployment steps (including the specific ECS update command), and troubleshooting logs into a single, professional appendix ready for your final report.
+
+-----
+
 # Capstone Project: Smart IoT Factory Simulator
 
 ## Appendix A: Implementation, Operations & Troubleshooting Guide
