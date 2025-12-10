@@ -73,11 +73,9 @@ module "s3_config" {
   create_buckets   = var.create_buckets
 
   # Compose bucket names dynamically
-  # cert_s3_bucket    = "${var.cert_s3_bucket}-${var.environment}"
-  # config_s3_bucket  = "${var.config_s3_bucket}-${var.environment}"
-
   config_s3_bucket = "${local.resource_prefix}-config" 
   cert_s3_bucket   = "${local.resource_prefix}-certs"
+
     # Add this line
   cert_files        = var.cert_files
 }
@@ -86,6 +84,7 @@ module "iot_ecs" {
   source = "../iot-simulator-ecs"
 
   # Infrastructure wiring
+  name_prefix = local.resource_prefix
   tags        = local.common_tags
   environment     = var.environment
   region          = var.region

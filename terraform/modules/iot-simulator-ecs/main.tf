@@ -109,6 +109,7 @@ command = [
             echo "  scrape_interval: 15s"
             echo "scrape_configs:"
             echo "  - job_name: 'prometheus'"
+            echo "    metrics_path: '/prometheus/metrics'"   # <--- FIX 1: Look in the new sub-path
             echo "    static_configs:"
             echo "      - targets: ['localhost:9090']"
             echo "  - job_name: 'iot-simulator'"
@@ -125,7 +126,7 @@ command = [
             echo "    type: prometheus"
             echo "    uid: prometheus"         # <--- THIS IS THE KEY FIX
             echo "    access: proxy"
-            echo "    url: http://localhost:9090"
+            echo "    url: http://localhost:9090/prometheus" # <--- FIX 2: Grafana must talk to Prom at sub-path
             echo "    isDefault: true"
           } > /mnt/config/provisioning/datasources/datasources.yaml
 
@@ -179,7 +180,9 @@ command = [
       ]
       command = [
         "--config.file=/etc/prometheus/prometheus.yml",
-        "--web.listen-address=:9090"
+        "--web.listen-address=:9090",
+        "--web.external-url=/prometheus/",
+        "--web.route-prefix=/prometheus/"
       ]
 
       logConfiguration = {
@@ -237,7 +240,7 @@ command = [
 
 # Target Group: Defines WHERE to send traffic (to Grafana container)
 resource "aws_lb_target_group" "grafana" {
-  name        = "iot-sim-grafana-tg"
+  name        = "${var.name_prefix}-graf-tg"
   port        = 3000            # Traffic arrives at TG on port 3000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -272,14 +275,14 @@ resource "aws_lb_listener_rule" "grafana_rule" {
 
 # Target Group: Prometheus
 resource "aws_lb_target_group" "prometheus" {
-  name        = "iot-sim-prometheus-tg"
+  name        = "${var.name_prefix}-prom-tg"
   port        = 9090
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
 
   health_check {
-    path                = "/-/healthy"   # Prometheus health endpoint
+    path                = "/prometheus/-/healthy"   # Prometheus health endpoint
     matcher             = "200"
     interval            = 30
     timeout             = 5
@@ -291,7 +294,7 @@ resource "aws_lb_target_group" "prometheus" {
 # Listener Rule: Prometheus
 resource "aws_lb_listener_rule" "prometheus_rule" {
   listener_arn = var.alb_listener_arn
-  priority     = 110
+  priority     = 90
 
   action {
     type             = "forward"
