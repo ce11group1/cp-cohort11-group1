@@ -16,6 +16,19 @@ output "certificate_arn" {
   value = aws_iot_certificate.sim_cert.arn
 }
 
+output "certificate_pem" {
+  value = aws_iot_certificate.sim_cert.certificate_pem
+}
+
 output "certificate_id" {
   value = aws_iot_certificate.sim_cert.id
 }
+
+output "private_key" {
+  value = aws_iot_certificate.sim_cert.private_key
+}
+
+output "public_key" {
+  value = aws_iot_certificate.sim_cert.public_key
+}
+

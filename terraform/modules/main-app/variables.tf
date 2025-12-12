@@ -107,3 +107,8 @@ variable "public_subnet_cidrs" {
   description = "List of public subnet CIDRs"
   default     = ["10.0.1.0/24", "10.0.2.0/24"] # Default to 2 subnets
 }
+
+variable "s3_bucket_name" {
+  description = "The globally unique name for the S3 bucket for IoT Data."
+  type        = string
+}

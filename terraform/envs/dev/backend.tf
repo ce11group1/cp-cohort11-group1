@@ -1,7 +1,7 @@
-# -----------------------------------------------------------
-# INITIAL SETUP: Comment this block OUT for the first 'terraform apply'.
-# MIGRATION: Uncomment it after resources are created, then run 'terraform init'.
-# -----------------------------------------------------------
+# STEP 1: COMMENT EVERYTHING BELOW THIS LINE FOR THE FIRST "TERRAFORM APPLY"
+# STEP 2: RUN 'terraform apply' to create the bucket.
+# STEP 3: UNCOMMENT BELOW, AND RUN 'terraform init' TO MIGRATE STATE.
+# -----------------------------------------------------------------------------
 
 terraform {
   backend "s3" {

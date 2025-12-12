@@ -1,4 +1,4 @@
-# /root/main.tf
+# /main-app/main.tf
 
 locals {
   # Logic: Just use the provided owner variable directly
@@ -53,7 +53,40 @@ module "iot" {
   tags        = local.common_tags
 }
 
-# 1. Create the Shared Load Balancer
+# IoT Logging Module
+module "iot_logging" {
+  source      = "../iot_logging"
+  environment = var.environment
+  region      = var.region
+  log_level   = "DEBUG"
+  tags        = local.common_tags
+}
+
+# IoT Storage Module (S3 Bucket)
+module "iot_storage" {
+  source           = "../iot_storage"
+  environment      = var.environment
+  region           = var.region
+  iot_topic        = var.iot_topic
+  s3_bucket_name   = var.s3_bucket_name
+  tags             = local.common_tags
+}
+
+# IoT Rule Module
+module "iot_rule" {
+  source          = "../iot_rule"
+  environment     = var.environment
+  iot_topic       = var.iot_topic
+
+  # Pass outputs from storage module as inputs
+  s3_bucket_name  = module.iot_storage.bucket_name
+  s3_bucket_arn   = module.iot_storage.bucket_arn
+  
+  # Ensure the logging module runs first, though not strictly required for inputs here
+  depends_on = [module.iot_logging]
+}
+
+# Create the Shared Load Balancer
 module "shared_alb" {
   source = "../shared-alb"
 
@@ -63,6 +96,7 @@ module "shared_alb" {
   public_subnets = module.network.public_subnets
 }
 
+# S3 Config (Dashboards & Certs)
 module "s3_config" {
   source = "../s3_config"
 
@@ -80,6 +114,7 @@ module "s3_config" {
   cert_files        = var.cert_files
 }
 
+# IoT Simulator (ECS Fargate)
 module "iot_ecs" {
   source = "../iot-simulator-ecs"
 
@@ -104,8 +139,8 @@ module "iot_ecs" {
 
   # App wiring (From IoT module)
   aws_iot_endpoint = module.iot.iot_endpoint
-  iot_topic        = "factory/simulator"
-  simulator_count  = 5
+  iot_topic        = var.iot_topic
+  simulator_count  = var.simulator_count
   iot_endpoint = module.iot.iot_endpoint
   repository_url = module.ecr_simulator.repository_url
 

@@ -19,17 +19,17 @@ resource "aws_ecs_task_definition" "main" {
   execution_role_arn       = aws_iam_role.execution_role.arn
   task_role_arn            = aws_iam_role.task_role.arn
 
-  # Shared volumes to hold downloaded configs
+  # Shared volumes to hold downloaded configs and certs
   volume { name = "config-volume" }
   volume { name = "certs-volume" }
 
-container_definitions = jsonencode([
+  container_definitions = jsonencode([
     # --- 1. INIT CONTAINER ---
     {
       name      = "init-s3-downloader"
       image     = "amazon/aws-cli:latest"
       essential = false
-      entryPoint = ["/bin/sh", "-c"],
+      entryPoint = ["/bin/sh", "-c"]
       mountPoints = [
         { sourceVolume = "config-volume", containerPath = "/mnt/config" },
         { sourceVolume = "certs-volume",  containerPath = "/mnt/certs" }
@@ -38,78 +38,25 @@ container_definitions = jsonencode([
         logDriver = "awslogs",
         options = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "init" }
       }
-      # command = [
-      #   <<-EOT
-      #     echo "Starting S3 Download..."
-          
-      #     # 1. Certs: Download to /mnt/certs/ (Root of volume)
-      #     aws s3 cp s3://${var.cert_bucket}/ /mnt/certs/ --recursive --exclude "*" --include "*.pem" --include "*.crt" --include "*.key"
-          
-      #     # 2. Prometheus: Download DIRECTLY to root of config volume
-      #     # Destination MUST be /mnt/config/prometheus.yml
-      #     aws s3 cp s3://${var.config_bucket}/prometheus/prometheus.yml /mnt/config/prometheus.yml
-          
-      #     # 3. Grafana: Download provisioning folder to /mnt/config/provisioning
-      #     aws s3 cp s3://${var.config_bucket}/grafana/provisioning/ /mnt/config/provisioning/ --recursive
-          
-      #     # 4. Grafana Config: Move grafana.ini to root /mnt/config/grafana.ini
-      #     # We try to copy it from two possible download locations just to be safe
-      #     cp /mnt/config/provisioning/grafana.ini /mnt/config/grafana.ini || cp /mnt/config/grafana/grafana.ini /mnt/config/grafana.ini || echo "Warning: grafana.ini not moved"
-
-      #     # 5. DEBUG: List files so we can see them in logs if it fails
-      #     echo "Listing /mnt/config:"
-      #     ls -R /mnt/config
-          
-      #     chmod -R 777 /mnt/config /mnt/certs
-      #     echo "Download Complete."
-      #   EOT
-      # ]
-      # command = [
-      #   <<-EOT
-      #     echo "Starting S3 Download..."
-          
-      #     # 1. Download Files
-      #     aws s3 cp s3://${var.cert_bucket}/ /mnt/certs/ --recursive --exclude "*" --include "*.pem" --include "*.crt" --include "*.key"
-      #     aws s3 cp s3://${var.config_bucket}/grafana/provisioning/ /mnt/config/provisioning/ --recursive
-      #     aws s3 cp s3://${var.config_bucket}/prometheus/prometheus.yml /mnt/config/prometheus.yml
-
-      #     # 2. CONFIG FIX: Move grafana.ini to root
-      #     cp /mnt/config/provisioning/grafana.ini /mnt/config/grafana.ini || cp /mnt/config/grafana/grafana.ini /mnt/config/grafana.ini || echo "Warning: grafana.ini not moved"
-          
-      #     # 3. NETWORK FIX: Rewrite hostnames for Fargate (Localhost)
-      #     # In Fargate sidecars, 'prometheus' and 'iot-simulator' are just 'localhost'
-      #     echo "Rewriting config files for ECS Localhost..."
-      #     sed -i 's/iot-simulator/localhost/g' /mnt/config/prometheus.yml
-      #     sed -i 's/prometheus:9090/localhost:9090/g' /mnt/config/provisioning/datasources/*.yaml || true
-      #     sed -i 's/prometheus:9090/localhost:9090/g' /mnt/config/provisioning/datasources/*.yml || true
-
-      #     # 4. CRASH FIX: Force remove complex alerting rules that might break startup
-      #     rm -rf /mnt/config/provisioning/alerting/notification-policies.yaml
-          
-      #     # 5. PERMISSION FIX: Give ownership to Grafana (User 472)
-      #     chown -R 472:472 /mnt/config
-      #     chown -R 65534:65534 /mnt/config/prometheus.yml
-      #     chmod -R 777 /mnt/certs
-          
-      #     echo "Setup Complete."
-      #   EOT
-      # ]
-command = [
+      command = [
         <<-EOT
           echo "Starting Setup..."
           
-          # 1. Download Files
-          aws s3 cp s3://${var.cert_bucket}/ /mnt/certs/ --recursive --exclude "*" --include "*.pem" --include "*.crt" --include "*.key"
+          # 1. Download Files (Using absolute paths to avoid relative path errors)
+          # Ensure destination /mnt/certs has NO trailing slash to avoid ambiguity
+          aws s3 cp s3://${var.cert_bucket} /mnt/certs --recursive --exclude "*" --include "*.pem" --include "*.crt" --include "*.key"
+          
+          # Download Configs
           aws s3 cp s3://${var.config_bucket}/grafana/provisioning/ /mnt/config/provisioning/ --recursive
 
-          # 2. FORCE-WRITE PROMETHEUS CONFIG (Safe Method)
+          # 2. FORCE-WRITE PROMETHEUS CONFIG (Safe Method for Fargate)
           echo "Creating Fargate-compatible prometheus.yml..."
           {
             echo "global:"
             echo "  scrape_interval: 15s"
             echo "scrape_configs:"
             echo "  - job_name: 'prometheus'"
-            echo "    metrics_path: '/prometheus/metrics'"   # <--- FIX 1: Look in the new sub-path
+            echo "    metrics_path: '/prometheus/metrics'"
             echo "    static_configs:"
             echo "      - targets: ['localhost:9090']"
             echo "  - job_name: 'iot-simulator'"
@@ -117,16 +64,16 @@ command = [
             echo "      - targets: ['localhost:9100']"
           } > /mnt/config/prometheus.yml
 
-          # 3. FORCE-WRITE DATASOURCE (Safe Method)
+          # 3. FORCE-WRITE DATASOURCE
           echo "Creating Fargate-compatible datasource..."
           {
             echo "apiVersion: 1"
             echo "datasources:"
             echo "  - name: Prometheus"
             echo "    type: prometheus"
-            echo "    uid: prometheus"         # <--- THIS IS THE KEY FIX
+            echo "    uid: prometheus"
             echo "    access: proxy"
-            echo "    url: http://localhost:9090/prometheus" # <--- FIX 2: Grafana must talk to Prom at sub-path
+            echo "    url: http://localhost:9090/prometheus"
             echo "    isDefault: true"
           } > /mnt/config/provisioning/datasources/datasources.yaml
 
@@ -136,10 +83,14 @@ command = [
           # Remove alerting to prevent crashes
           rm -rf /mnt/config/provisioning/alerting/notification-policies.yaml
 
-          # CRITICAL: Fix Permissions
+          # CRITICAL: Fix Permissions so other containers can read these files
           chown -R 472:472 /mnt/config
           chown -R 65534:65534 /mnt/config/prometheus.yml
           chmod -R 777 /mnt/certs
+          
+          # DEBUG: Prove files exist in the logs
+          echo "Listing /mnt/certs:"
+          ls -la /mnt/certs
           
           echo "Setup Complete."
         EOT
@@ -153,12 +104,15 @@ command = [
       essential = true
       dependsOn = [{ containerName = "init-s3-downloader", condition = "SUCCESS" }]
       mountPoints = [
+        # Mount the shared volume to where the app expects certificates
         { sourceVolume = "certs-volume", containerPath = "/app/certs" }
       ]
       environment = [
-        # --- FIX 2: Rename IOT_ENDPOINT to AWS_ENDPOINT ---
         { name = "AWS_ENDPOINT", value = var.iot_endpoint },
-        { name = "DEVICE_ID",    value = "iot-sim-device-001" }
+        { name = "DEVICE_ID",    value = "iot-sim-device-001" },
+        { name = "IOT_TOPIC",    value = var.iot_topic },
+        # Explicitly tell Python where to look (matches containerPath above)
+        { name = "CERT_DIR",     value = "/app/certs" }
       ]
       logConfiguration = {
         logDriver = "awslogs",
@@ -175,8 +129,6 @@ command = [
       portMappings = [{ containerPort = 9090, hostPort = 9090 }]
       mountPoints = [
         { sourceVolume = "config-volume", containerPath = "/etc/prometheus" }
-      # This maps /mnt/config (host) -> /etc/prometheus (container)
-      # So /mnt/config/prometheus.yml becomes /etc/prometheus/prometheus.yml (CORRECT)
       ]
       command = [
         "--config.file=/etc/prometheus/prometheus.yml",
@@ -184,7 +136,6 @@ command = [
         "--web.external-url=/prometheus/",
         "--web.route-prefix=/prometheus/"
       ]
-
       logConfiguration = {
         logDriver = "awslogs",
         options = {
@@ -204,8 +155,6 @@ command = [
       portMappings = [{ containerPort = 3000, hostPort = 3000 }]
       mountPoints = [
         { sourceVolume = "config-volume", containerPath = "/etc/grafana" }
-      # This maps /mnt/config (host) -> /etc/grafana (container)
-      # So /mnt/config/grafana.ini becomes /etc/grafana/grafana.ini (CORRECT)
       ]
       command = [
         "--config=/etc/grafana/grafana.ini",
@@ -238,16 +187,15 @@ command = [
 # LOAD BALANCER CONNECTION
 # =========================================================
 
-# Target Group: Defines WHERE to send traffic (to Grafana container)
 resource "aws_lb_target_group" "grafana" {
   name        = "${var.name_prefix}-graf-tg"
-  port        = 3000            # Traffic arrives at TG on port 3000
+  port        = 3000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
-  target_type = "ip"            # REQUIRED for Fargate
+  target_type = "ip"
 
   health_check {
-    path                = "/api/health" # Grafana specific health check
+    path                = "/api/health"
     matcher             = "200"
     interval            = 30
     timeout             = 5
@@ -256,10 +204,9 @@ resource "aws_lb_target_group" "grafana" {
   }
 }
 
-# Listener Rule: Defines WHEN to send traffic to this Target Group
 resource "aws_lb_listener_rule" "grafana_rule" {
   listener_arn = var.alb_listener_arn
-  priority     = 100 # Priority 100 (Lambda can use 200, etc.)
+  priority     = 100
 
   action {
     type             = "forward"
@@ -268,7 +215,7 @@ resource "aws_lb_listener_rule" "grafana_rule" {
 
   condition {
     path_pattern {
-      values = ["/*"] # Send ALL traffic to Grafana (Modify if sharing with Lambda)
+      values = ["/*"]
     }
   }
 }
@@ -282,7 +229,7 @@ resource "aws_lb_target_group" "prometheus" {
   target_type = "ip"
 
   health_check {
-    path                = "/prometheus/-/healthy"   # Prometheus health endpoint
+    path                = "/prometheus/-/healthy"
     matcher             = "200"
     interval            = 30
     timeout             = 5
@@ -291,7 +238,6 @@ resource "aws_lb_target_group" "prometheus" {
   }
 }
 
-# Listener Rule: Prometheus
 resource "aws_lb_listener_rule" "prometheus_rule" {
   listener_arn = var.alb_listener_arn
   priority     = 90
@@ -343,7 +289,6 @@ resource "aws_ecs_service" "main" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
-  # --- NEW BLOCK ---
   load_balancer {
     target_group_arn = aws_lb_target_group.grafana.arn
     container_name   = "grafana" # MUST match the name in container_definitions

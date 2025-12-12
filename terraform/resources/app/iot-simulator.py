@@ -265,8 +265,7 @@ def make_payload(device_id: str):
 # -------------------------
 
 def publisher(device_id: str):
-##    topic = f"{IOT_TOPIC}/{device_id}"
-    topic = f"iot/simulator/{device_id}/data"    # <–– REQUIRED CHANGE for S3 output
+    topic = f"{IOT_TOPIC}/{device_id}"
     client = mqtt.Client()
 
     try:
