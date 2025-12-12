@@ -27,7 +27,7 @@ allowed_cidr    = "0.0.0.0/0"
 
 # S3 bucket for configurations
 #config_s3_bucket  = "ce11-grp1-iot-sim-config"
-alert_email_recipients = ["shilpakangya2025@gmail.com"]
+#alert_email_recipients = ["shilpakangya2025@gmail.com"]
 
 cert_files = {
     root_ca     = "AmazonRootCA1.pem"
@@ -37,3 +37,6 @@ cert_files = {
 
 create_buckets = true
 #create_backend_resources = false
+
+iot_topic = "factory/plant1/line1"
+s3_bucket_name = "dev-iot-telemetry-storage"
