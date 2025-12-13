@@ -1,0 +1,5 @@
+paho-mqtt
+prometheus_client
+pyOpenSSL<24.0.0
+AWSIoTPythonSDK>=1.5.0,<2.0.0
+requests

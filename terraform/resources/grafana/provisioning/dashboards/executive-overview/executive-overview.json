@@ -1,0 +1,86 @@
+{
+  "title": "Executive Overview",
+  "uid": "executive-overview",
+  "schemaVersion": 36,
+  "version": 2,
+  "refresh": "30s",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Global Anomaly Ratio (%)",
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(\n  sum(rate(anomaly_type_total[5m]))\n  /\n  sum(rate(events_total[5m]))\n) * 100"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Devices Generating Events",
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "B",
+          "expr": "count(count by (device) (rate(events_total[5m])))"
+        }
+      ],
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Per-Device Anomaly Ratio (%)",
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "expr": "(\n  sum by (device) (rate(anomaly_type_total[5m]))\n  /\n  sum by (device) (rate(events_total[5m]))\n) * 100",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 8
+      }
+    }
+  ]
+}
