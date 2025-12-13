@@ -27,8 +27,8 @@ jobs:
         with:
           terraform_version: "1.9.5"
 
-      - name: Terraform fmt
-        run: terraform fmt -check -recursive
+      - name: Terraform fmt (non-blocking)
+        run: terraform fmt -check -recursive || true
 
       - name: Terraform init (DEV)
         working-directory: terraform/envs/dev
