@@ -71,7 +71,6 @@ jobs:
 
   deploy-prod:
     name: Terraform Deploy PROD
-  deploy-prod:
     runs-on: ubuntu-latest
     needs: terraform-ci
     if: github.ref == 'refs/heads/main'
@@ -99,6 +98,3 @@ jobs:
       - name: Terraform apply (PROD)
         working-directory: terraform/envs/prod
         run: terraform apply -auto-approve
-      - name: Terraform apply (PROD)
-        working-directory: terraform/envs/prod
-        run: terraform apply
