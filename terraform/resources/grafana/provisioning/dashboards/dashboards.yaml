@@ -1,0 +1,36 @@
+# dashboards.yaml
+---
+apiVersion: 1
+
+providers:
+  # --- Anomalies dashboard ---
+  - name: "anomalies"
+    orgId: 1
+    folder: "Anomalies"
+    type: file
+    editable: false
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/anomalies
+  # --- IoT Sim dashboards ---
+  - name: "iot-sim"
+    orgId: 1
+    folder: "IoT Sim"
+    type: file
+    editable: false
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/iot-sim
+
+  # --- Executive Overview dashboard ---
+  - name: "executive-overview"
+    orgId: 1
+    folder: "Executive Overview"
+    type: file
+    editable: false
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/executive-overview

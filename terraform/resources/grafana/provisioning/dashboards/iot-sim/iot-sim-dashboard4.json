@@ -1,0 +1,152 @@
+{
+  "title": "IoT Simulator + System Health",
+  "uid": "iot-sim-system-health",
+  "schemaVersion": 36,
+  "version": 4,
+  "refresh": "5s",
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Machine Temperature (\u00b0C)",
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "machine_temperature_c",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Machine Vibration (m/s\u00b2)",
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "B",
+          "expr": "machine_vibration_ms2",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Machine RPM",
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "expr": "machine_rpm",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Machine Power (kW)",
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "H",
+          "expr": "machine_power_kw",
+          "legendFormat": "{{device}}"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Anomaly Type Frequency (last 5m)",
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(anomaly_type_total[5m])) by (type)",
+          "legendFormat": "{{type}}",
+          "refId": "D"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 6
+      }
+    },
+    {
+      "type": "alertlist",
+      "title": "Active Alerts",
+      "options": {
+        "show": "current",
+        "stateFilter": ["alerting", "pending"]
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 6
+      }
+    }
+  ]
+}

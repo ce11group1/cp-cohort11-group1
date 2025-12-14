@@ -1,0 +1,105 @@
+# anomaly-alerts.yaml
+---
+apiVersion: 1
+
+groups:
+  - name: anomaly-alerts
+    folder: "Anomaly Alerts"
+    interval: 30s
+    rules:
+      # -----------------------------
+      # High Anomaly Ratio (per device)
+      # -----------------------------
+      - uid: anomaly-ratio-high
+        title: "High Anomaly Ratio (per device)"
+        condition: A
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              hide: false
+              intervalMs: 15000
+              maxDataPoints: 43200
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                (
+                  sum by (device) (rate(anomaly_type_total[5m]))
+                  /
+                  sum by (device) (rate(events_total[5m]))
+                ) * 100
+              format: time_series
+              instant: false
+              legendFormat: "{{device}} anomaly ratio"
+              range: true
+        for: 2m
+        annotations:
+          summary: "High anomaly ratio for one or more devices (> 20%)"
+          description: "Over the last 5 minutes, a device has more than 20% of its events classified as anomalies."
+        labels:
+          severity: warning
+        conditions:
+          - evaluator:
+              type: gt
+              params: [20]
+            operator:
+              type: and
+            query:
+              params: [A]
+            reducer:
+              type: last
+            type: query
+      # -----------------------------
+      # Critical Temperature Spike (per device)
+      # -----------------------------
+      - uid: spike-severity-critical
+        title: "Critical Temperature Spike (per device)"
+        condition: A
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              hide: false
+              intervalMs: 15000
+              maxDataPoints: 43200
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                histogram_quantile(
+                  0.95,
+                  sum by (le, device) (rate(temperature_spike_c_bucket[5m]))
+                )
+              format: time_series
+              instant: false
+              legendFormat: "p95 spike {{device}}"
+              range: true
+
+        for: 1m
+        annotations:
+          summary: "95th percentile temperature spike > 25°C for a device"
+          description: "For at least 1 minute, a device has a 95th percentile spike above 25°C."
+        labels:
+          severity: critical
+        conditions:
+          - evaluator:
+              type: gt
+              params: [25]
+            operator:
+              type: and
+            query:
+              params: [A]
+            reducer:
+              type: last
+            type: query
