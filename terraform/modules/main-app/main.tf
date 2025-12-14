@@ -147,6 +147,9 @@ module "iot_ecs" {
   iot_endpoint     = module.iot.iot_endpoint
   repository_url   = module.ecr_simulator.repository_url
 
+  # grafana secrets
+  enable_grafana_smtp_secret = var.enable_grafana_smtp_secret
+
   # DOCKER IMAGE
   # Update this URI after running 'docker push'
   #app_image_uri    = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/iot-simulator:latest"

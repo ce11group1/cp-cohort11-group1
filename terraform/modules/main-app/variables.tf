@@ -118,3 +118,9 @@ variable "enable_cert_upload" {
   type    = bool
   default = true
 }
+
+# grafana smtp secret
+variable "enable_grafana_smtp_secret" {
+  type    = bool
+  default = true
+}
