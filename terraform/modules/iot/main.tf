@@ -25,9 +25,9 @@ resource "aws_iot_thing" "simulator" {
 ############################################
 
 resource "aws_iot_policy" "sim_policy" {
-  name   = "iot-sim-policy-${var.environment}"
+  name = "iot-sim-policy-${var.environment}"
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
         Effect = "Allow"
@@ -87,7 +87,7 @@ resource "aws_iot_thing_principal_attachment" "attach_cert" {
 #   # bucket        = "${var.environment}-iot-telemetry-storage-${data.aws_caller_identity.current.account_id}"
 #   bucket        = "${var.environment}-iot-telemetry-storage"
 #   force_destroy = true # Allows deleting bucket even if it contains files (for dev/capstone)
-  
+
 #   tags = merge(var.tags, {
 #     Name = "${var.environment}-iot-telemetry"
 #   })
@@ -147,14 +147,14 @@ resource "aws_iot_thing_principal_attachment" "attach_cert" {
 #   name        = "iot_s3_storage_rule_${var.environment}"
 #   description = "Route all telemetry data to S3 bucket"
 #   enabled     = true
-  
+
 #   # SQL: Select ALL data (*) from the topic and any subtopic (/#)
 #   sql         = "SELECT * FROM '${var.iot_topic}/#'"
 #   sql_version = "2016-03-23"
 
 #   s3 {
 #     bucket_name = aws_s3_bucket.telemetry_bucket.bucket
-    
+
 #     # Organize files by Topic structure and Timestamp
 #     # Example path: factory/plant1/line1/M001/1698765432.json
 #     key         = "$${topic()}/$${timestamp()}.json"   

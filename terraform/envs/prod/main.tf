@@ -36,19 +36,19 @@ module "app" {
   region       = var.region
 
   # Network
-  vpc_cidr     = var.vpc_cidr
+  vpc_cidr            = var.vpc_cidr
   public_subnet_cidrs = var.public_subnet_cidrs
-  allowed_cidr = var.allowed_cidr
+  allowed_cidr        = var.allowed_cidr
 
-# App Config
-  instance_type       = var.instance_type
-  simulator_count     = var.simulator_count
-  key_name            = var.key_name
-  
+  # App Config
+  instance_type   = var.instance_type
+  simulator_count = var.simulator_count
+  key_name        = var.key_name
+
   # IoT & Storage
   # We pass the bucket name here, and the app module creates it internally.
-  s3_bucket_name      = var.s3_bucket_name 
-  iot_topic           = var.iot_topic
-  cert_files          = var.cert_files
-  create_buckets      = var.create_buckets
+  s3_bucket_name = var.s3_bucket_name
+  iot_topic      = var.iot_topic
+  cert_files     = var.cert_files
+  create_buckets = var.create_buckets
 }

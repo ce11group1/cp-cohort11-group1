@@ -1,13 +1,19 @@
 # modules/iot-simulator-ecs/main.tf
 
+# data "aws_secretsmanager_secret" "grafana_smtp" {
+#   name = "grafana/smtp"
+# }
+
 data "aws_secretsmanager_secret" "grafana_smtp" {
-  name = "grafana/smtp"
+  count = var.enable_grafana_smtp_secret ? 1 : 0
+  name  = var.grafana_smtp_secret_name
 }
 
+
 resource "aws_cloudwatch_log_group" "logs" {
-  name = "/ecs/iot-simulator"
+  name              = "/ecs/iot-simulator"
   retention_in_days = var.environment == "prod" ? 90 : 7
-  tags = merge(var.tags, { Name = "${var.environment}-iot-logs" })
+  tags              = merge(var.tags, { Name = "${var.environment}-iot-logs" })
 }
 
 resource "aws_ecs_task_definition" "main" {
@@ -26,17 +32,17 @@ resource "aws_ecs_task_definition" "main" {
   container_definitions = jsonencode([
     # --- 1. INIT CONTAINER ---
     {
-      name      = "init-s3-downloader"
-      image     = "amazon/aws-cli:latest"
-      essential = false
+      name       = "init-s3-downloader"
+      image      = "amazon/aws-cli:latest"
+      essential  = false
       entryPoint = ["/bin/sh", "-c"]
       mountPoints = [
         { sourceVolume = "config-volume", containerPath = "/mnt/config" },
-        { sourceVolume = "certs-volume",  containerPath = "/mnt/certs" }
+        { sourceVolume = "certs-volume", containerPath = "/mnt/certs" }
       ]
       logConfiguration = {
         logDriver = "awslogs",
-        options = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "init" }
+        options   = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "init" }
       }
       command = [
         <<-EOT
@@ -109,23 +115,23 @@ resource "aws_ecs_task_definition" "main" {
       ]
       environment = [
         { name = "AWS_ENDPOINT", value = var.iot_endpoint },
-        { name = "DEVICE_ID",    value = "iot-sim-device-001" },
-        { name = "IOT_TOPIC",    value = var.iot_topic },
+        { name = "DEVICE_ID", value = "iot-sim-device-001" },
+        { name = "IOT_TOPIC", value = var.iot_topic },
         # Explicitly tell Python where to look (matches containerPath above)
-        { name = "CERT_DIR",     value = "/app/certs" }
+        { name = "CERT_DIR", value = "/app/certs" }
       ]
       logConfiguration = {
         logDriver = "awslogs",
-        options = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "app" }
+        options   = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "app" }
       }
     },
 
     # --- 3. PROMETHEUS (Unchanged) ---
     {
-      name      = "prometheus"
-      image     = "prom/prometheus:latest"
-      essential = true
-      dependsOn = [{ containerName = "init-s3-downloader", condition = "SUCCESS" }]
+      name         = "prometheus"
+      image        = "prom/prometheus:latest"
+      essential    = true
+      dependsOn    = [{ containerName = "init-s3-downloader", condition = "SUCCESS" }]
       portMappings = [{ containerPort = 9090, hostPort = 9090 }]
       mountPoints = [
         { sourceVolume = "config-volume", containerPath = "/etc/prometheus" }
@@ -148,10 +154,10 @@ resource "aws_ecs_task_definition" "main" {
 
     # --- 4. GRAFANA (Unchanged) ---
     {
-      name      = "grafana"
-      image     = "grafana/grafana:latest"
-      essential = true
-      dependsOn = [{ containerName = "init-s3-downloader", condition = "SUCCESS" }]
+      name         = "grafana"
+      image        = "grafana/grafana:latest"
+      essential    = true
+      dependsOn    = [{ containerName = "init-s3-downloader", condition = "SUCCESS" }]
       portMappings = [{ containerPort = 3000, hostPort = 3000 }]
       mountPoints = [
         { sourceVolume = "config-volume", containerPath = "/etc/grafana" }
@@ -162,22 +168,22 @@ resource "aws_ecs_task_definition" "main" {
         "--packaging=docker"
       ]
       secrets = [
-        { name = "GF_SMTP_HOST",         valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_HOST::" },
-        { name = "GF_SMTP_USER",         valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_USER::" },
-        { name = "GF_SMTP_PASSWORD",     valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_PASSWORD::" },
+        { name = "GF_SMTP_HOST", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_HOST::" },
+        { name = "GF_SMTP_USER", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_USER::" },
+        { name = "GF_SMTP_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_PASSWORD::" },
         { name = "GF_SMTP_FROM_ADDRESS", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_FROM::" },
-        { name = "GF_SMTP_FROM_NAME",    valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_NAME::" }
+        { name = "GF_SMTP_FROM_NAME", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_NAME::" }
       ]
       environment = [
-        { name = "GF_SECURITY_ADMIN_USER",     value = "admin" },
+        { name = "GF_SECURITY_ADMIN_USER", value = "admin" },
         { name = "GF_SECURITY_ADMIN_PASSWORD", value = "admin" },
-        { name = "GF_SMTP_ENABLED",            value = "true" },
-        { name = "GF_SMTP_SKIP_VERIFY",        value = "true" },
-        { name = "GF_SMTP_STARTTLS_POLICY",    value = "OpportunisticStartTLS" }
+        { name = "GF_SMTP_ENABLED", value = "true" },
+        { name = "GF_SMTP_SKIP_VERIFY", value = "true" },
+        { name = "GF_SMTP_STARTTLS_POLICY", value = "OpportunisticStartTLS" }
       ]
       logConfiguration = {
         logDriver = "awslogs",
-        options = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "grafana" }
+        options   = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "grafana" }
       }
     }
   ])
@@ -303,19 +309,19 @@ resource "aws_ecs_service" "main" {
 
   # -----------------
 
-# Single NAT Gateway (Cost vs. Reliability)
-# The Observation: You are currently putting ECS tasks in Public Subnets (assigning public IPs).
-# The Improvement: For a production enterprise setup, resources usually live in Private Subnets with a NAT Gateway.
-# Prod: Private Subnets + NAT Gateway (More secure, higher cost).
-# Dev: Public Subnets (Cheaper, easier access).
+  # Single NAT Gateway (Cost vs. Reliability)
+  # The Observation: You are currently putting ECS tasks in Public Subnets (assigning public IPs).
+  # The Improvement: For a production enterprise setup, resources usually live in Private Subnets with a NAT Gateway.
+  # Prod: Private Subnets + NAT Gateway (More secure, higher cost).
+  # Dev: Public Subnets (Cheaper, easier access).
   network_configuration {
     subnets          = var.subnets
     security_groups  = var.security_groups
-    assign_public_ip = true       # Set to false if using Private Subnets + NAT Gateway
+    assign_public_ip = true # Set to false if using Private Subnets + NAT Gateway
   }
-  
+
   # Wait for the rule to be ready before creating service
-    depends_on = [
+  depends_on = [
     aws_lb_listener_rule.grafana_rule,
     aws_lb_listener_rule.prometheus_rule
   ]

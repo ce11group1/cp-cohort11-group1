@@ -10,31 +10,31 @@ variable "owner" {
 }
 
 variable "region" {
-  type    = string
-  default = "us-east-1"
+  type        = string
+  default     = "us-east-1"
   description = "AWS region to deploy resources"
 }
 
 variable "environment" {
-  type    = string
-  default = "dev"
+  type        = string
+  default     = "dev"
   description = "Deployment environment (e.g., dev, staging, prod)"
 }
 
 variable "instance_type" {
-  type    = string
-  default = "t3.medium"
+  type        = string
+  default     = "t3.medium"
   description = "EC2 instance type for simulator host"
 }
 
 variable "simulator_count" {
-  type    = number
-  default = 2
+  type        = number
+  default     = 2
   description = "Number of simulator EC2 instances to launch"
 }
 
 variable "allowed_cidr" {
-  type        = string
+  type = string
   #default     = "0.0.0.0/0"
   description = "CIDR block allowed to access EC2 services (e.g., SSH, Grafana, Prometheus)"
 }
@@ -52,7 +52,7 @@ variable "cert_s3_bucket" {
 }
 
 variable "cert_files" {
-  type = map(string)
+  type        = map(string)
   description = "Map of certificate and key filenames to upload to S3"
   default = {
     root_ca     = "AmazonRootCA1.pem"
@@ -97,8 +97,8 @@ variable "create_backend_resources" {
 }
 
 variable "vpc_cidr" {
-  type        = string
-  default     = "10.0.0.0/16"
+  type    = string
+  default = "10.0.0.0/16"
 }
 
 # CHANGE: Update type to list(string) and name to plural
@@ -111,4 +111,10 @@ variable "public_subnet_cidrs" {
 variable "s3_bucket_name" {
   description = "The globally unique name for the S3 bucket for IoT Data."
   type        = string
+}
+
+#cert upload
+variable "enable_cert_upload" {
+  type    = bool
+  default = true
 }

@@ -5,10 +5,10 @@ resource "aws_cloudwatch_log_group" "iot_rules_log_group" {
   name              = "/aws/iot/rules/${var.environment}"
   retention_in_days = 7 #var.log_retention_days # Use a variable for controlled retention
   lifecycle {
-  prevent_destroy = false
-  create_before_destroy = true
-  ignore_changes = [name]
-}
+    prevent_destroy       = false
+    create_before_destroy = true
+    ignore_changes        = [name]
+  }
   # Note: The logs for AWS IoT CORE (the service itself) typically go to AWSIotLogsV2 or similar
   # This group is often used for the rule execution action, making it clear where errors originate.
 }
@@ -42,7 +42,7 @@ resource "aws_iam_policy" "iot_logging_policy" {
         "logs:PutLogEvents",
         "logs:DescribeLogGroups"
       ],
-      Effect = "Allow",
+      Effect   = "Allow",
       Resource = "*"
     }]
   })

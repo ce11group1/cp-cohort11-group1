@@ -36,7 +36,7 @@ jobs:
 
       # ✅ blocking + scoped to terraform directory
       - name: Terraform fmt (check)
-        run: terraform fmt -recursive terraform
+        run: terraform fmt -check -recursive terraform
 
       - name: Terraform init (dev, no backend)
         working-directory: terraform/envs/dev
@@ -83,7 +83,9 @@ jobs:
 
       - name: Terraform plan (DEV)
         working-directory: terraform/envs/dev
-        run: terraform plan -no-color
+        run: terraform plan -no-color \
+          -var="enable_cert_upload=false" \
+          -var="enable_grafana_smtp_secret=false"
 
   # ===============================
   # APPLY DEV (push to dev only)

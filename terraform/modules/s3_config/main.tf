@@ -4,14 +4,14 @@ resource "aws_s3_bucket" "config_bucket" {
   count         = var.create_buckets ? 1 : 0
   bucket        = var.config_s3_bucket
   force_destroy = var.environment == "prod" ? false : true
-  tags = merge(var.tags, { Name = var.config_s3_bucket })
+  tags          = merge(var.tags, { Name = var.config_s3_bucket })
 }
 
 resource "aws_s3_bucket" "cert_bucket" {
   count         = var.create_buckets ? 1 : 0
   bucket        = var.cert_s3_bucket
   force_destroy = var.environment == "prod" ? false : true
-  tags = merge(var.tags, { Name = var.cert_s3_bucket })
+  tags          = merge(var.tags, { Name = var.cert_s3_bucket })
 }
 
 data "aws_s3_bucket" "config_bucket" {
@@ -25,18 +25,18 @@ data "aws_s3_bucket" "cert_bucket" {
 }
 
 locals {
-# Define the base path to the resources folder
+  # Define the base path to the resources folder
   # Logic: Up from 'modules/s3_config' (2 levels) -> 'resources'
   resources_path = "${path.module}/../../resources"
 
   config_bucket = var.create_buckets ? aws_s3_bucket.config_bucket[0].bucket : data.aws_s3_bucket.config_bucket[0].bucket
-  cert_bucket   = var.create_buckets ? aws_s3_bucket.cert_bucket[0].bucket   : data.aws_s3_bucket.cert_bucket[0].bucket
+  cert_bucket   = var.create_buckets ? aws_s3_bucket.cert_bucket[0].bucket : data.aws_s3_bucket.cert_bucket[0].bucket
 
   dashboard_files = {
-    "anomalies/anomalies.json"                  = "grafana/provisioning/dashboards/anomalies/anomalies.json"
-  #  "system-health/system-health.json"          = "grafana/provisioning/dashboards/system-health/system-health.json"
-  #  "latency/latency.json"                      = "grafana/provisioning/dashboards/latency/latency.json"
-    "iot-sim/iot-sim-dashboard4.json"           = "grafana/provisioning/dashboards/iot-sim/iot-sim-dashboard4.json"
+    "anomalies/anomalies.json" = "grafana/provisioning/dashboards/anomalies/anomalies.json"
+    #  "system-health/system-health.json"          = "grafana/provisioning/dashboards/system-health/system-health.json"
+    #  "latency/latency.json"                      = "grafana/provisioning/dashboards/latency/latency.json"
+    "iot-sim/iot-sim-dashboard4.json"            = "grafana/provisioning/dashboards/iot-sim/iot-sim-dashboard4.json"
     "executive-overview/executive-overview.json" = "grafana/provisioning/dashboards/executive-overview/executive-overview.json"
   }
 }

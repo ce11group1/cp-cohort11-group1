@@ -7,7 +7,7 @@ variable "tags" {
 }
 
 # (Only for modules that need to name things, like Network/ALB/ECR)
-variable "name_prefix" { 
+variable "name_prefix" {
   description = "Standard naming prefix (owner-env-project)"
   type        = string
   default     = "" # Optional default to prevent errors if you miss it
@@ -54,7 +54,18 @@ variable "alb_security_group_id" {
 }
 
 variable "environment" {
-  type    = string
-  default = "dev"
+  type        = string
+  default     = "dev"
   description = "Deployment environment (e.g., dev, staging, prod)"
+}
+
+# grafana secrets
+variable "enable_grafana_smtp_secret" {
+  type    = bool
+  default = true
+}
+
+variable "grafana_smtp_secret_name" {
+  type    = string
+  default = "grafana/smtp"
 }
