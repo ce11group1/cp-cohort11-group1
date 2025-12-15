@@ -128,6 +128,3 @@ variable "create_backend_resources" {
 
 
 
-
-
-
