@@ -31,7 +31,7 @@ resource "aws_iam_policy" "iot_rule_s3_policy" {
         "s3:PutObjectAcl" # Included for new bucket Object Owner Enforced compatibility
         #"s3:AbortMultipartUpload"
       ],
-      Effect = "Allow",
+      Effect   = "Allow",
       Resource = "${var.s3_bucket_arn}/*"
     }]
   })
@@ -45,22 +45,22 @@ resource "aws_iam_role_policy_attachment" "iot_rule_s3_attach" {
 
 # AWS IoT Topic Rule to S3 Action
 resource "aws_iot_topic_rule" "s3_storage_rule" {
-  name        = "SimulatorDataToS3Rule_${var.environment}"
-  enabled     = true
+  name    = "SimulatorDataToS3Rule_${var.environment}"
+  enabled = true
   # SQL to select all data from the simulator topic root
   sql         = "SELECT * FROM '${var.iot_topic}/#'"
   sql_version = "2016-03-23"
 
   s3 {
     bucket_name = var.s3_bucket_name
-    
+
     # CRITICAL: Unique S3 key using escaped substitution for Terraform
-    key       = "$${topic()}/$${timestamp()}.json"
+    key = "$${topic()}/$${timestamp()}.json"
 
     # CRITICAL FIX: Ensures the S3 object is owned by the bucket owner
     #canned_acl = "bucket-owner-full-control"
 
-    role_arn  = aws_iam_role.iot_rule_s3_role.arn
+    role_arn = aws_iam_role.iot_rule_s3_role.arn
   }
 
   # Optional Error Action (republishes failure reason to MQTT topic)

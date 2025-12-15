@@ -6,9 +6,9 @@
 # ==============================================================================
 
 resource "aws_s3_bucket" "terraform_state" {
-  count         = var.create_backend_resources ? 1 : 0
-  bucket        = var.bucket_name
-  
+  count  = var.create_backend_resources ? 1 : 0
+  bucket = var.bucket_name
+
   # CAUTION: 'force_destroy' allows deleting the bucket even if it has files.
   # Set to 'false' for real Production environments to prevent accidental data loss.
   force_destroy = true
@@ -22,7 +22,7 @@ resource "aws_s3_bucket" "terraform_state" {
 resource "aws_s3_bucket_versioning" "terraform_state" {
   count  = var.create_backend_resources ? 1 : 0
   bucket = aws_s3_bucket.terraform_state[0].id
-  
+
   versioning_configuration {
     status = "Enabled"
   }

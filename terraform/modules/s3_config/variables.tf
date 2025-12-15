@@ -7,7 +7,7 @@ variable "tags" {
 }
 
 # (Only for modules that need to name things, like Network/ALB/ECR)
-variable "name_prefix" { 
+variable "name_prefix" {
   description = "Standard naming prefix (owner-env-project)"
   type        = string
   default     = "" # Optional default to prevent errors if you miss it
@@ -39,6 +39,12 @@ variable "cert_s3_bucket" {
 }
 
 variable "cert_files" {
-  type = map(string)
+  type        = map(string)
   description = "Map of certificate and key filenames to upload to S3"
+}
+
+# cert upload
+variable "enable_cert_upload" {
+  type    = bool
+  default = true
 }

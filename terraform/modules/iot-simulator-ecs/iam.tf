@@ -8,7 +8,7 @@
 resource "aws_iam_role" "execution_role" {
   name = "${var.environment}-iot-execution-role"
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" } }]
   })
   tags = merge(var.tags, { Name = "${var.environment}-iot-execution-role" })
@@ -19,19 +19,20 @@ resource "aws_iam_role_policy_attachment" "execution_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# --- CRITICAL FIX: Give Execution Role access to Secrets ---
+# --- Give Execution Role access to Secrets (only when enabled) ---
 resource "aws_iam_role_policy" "execution_secrets_policy" {
+  count = var.enable_grafana_smtp_secret ? 1 : 0
+
   name = "iot-sim-execution-secrets"
   role = aws_iam_role.execution_role.id
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow",
-        Action = ["secretsmanager:GetSecretValue"],
-        #Resource = ["arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:grafana/smtp*"]
-        # Use the DATA SOURCE ARN here too
-        Resource = [data.aws_secretsmanager_secret.grafana_smtp.arn]
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+        Resource = [local.grafana_smtp_secret_arn]
       }
     ]
   })
@@ -44,7 +45,7 @@ resource "aws_iam_role_policy" "execution_secrets_policy" {
 resource "aws_iam_role" "task_role" {
   name = "${var.environment}-iot-task-role"
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" } }]
   })
   tags = merge(var.tags, { Name = "${var.environment}-iot-task-role" })
@@ -62,7 +63,7 @@ resource "aws_iam_role_policy" "task_permissions" {
         Action = ["s3:GetObject", "s3:ListBucket"],
         Resource = [
           "arn:aws:s3:::${var.config_bucket}", "arn:aws:s3:::${var.config_bucket}/*",
-          "arn:aws:s3:::${var.cert_bucket}",   "arn:aws:s3:::${var.cert_bucket}/*"
+          "arn:aws:s3:::${var.cert_bucket}", "arn:aws:s3:::${var.cert_bucket}/*"
         ]
       }
     ]

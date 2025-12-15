@@ -28,7 +28,7 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.lb_sg.id]
   subnets            = var.public_subnets
-  tags = merge(var.tags, { Name = "${var.name_prefix}-alb" })
+  tags               = merge(var.tags, { Name = "${var.name_prefix}-alb" })
 }
 
 resource "aws_lb_listener" "http" {

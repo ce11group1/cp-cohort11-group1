@@ -7,7 +7,7 @@ variable "tags" {
 }
 
 # (Only for modules that need to name things, like Network/ALB/ECR)
-variable "name_prefix" { 
+variable "name_prefix" {
   description = "Standard naming prefix (owner-env-project)"
   type        = string
   default     = "" # Optional default to prevent errors if you miss it
@@ -20,8 +20,8 @@ variable "vpc_cidr" {
 }
 
 variable "environment" {
-  type    = string
-  default = "dev"
+  type        = string
+  default     = "dev"
   description = "Deployment environment (e.g., dev, staging, prod)"
 }
 
