@@ -1,7 +1,24 @@
 # modules/iot-simulator-ecs/main.tf
 
+# data "aws_secretsmanager_secret" "grafana_smtp" {
+#   name = "grafana/smtp"
+# }
+
 data "aws_secretsmanager_secret" "grafana_smtp" {
-  name = "grafana/smtp"
+  count = var.enable_grafana_smtp_secret ? 1 : 0
+  name  = var.grafana_smtp_secret_name
+}
+
+locals {
+  grafana_smtp_secret_arn = var.enable_grafana_smtp_secret ? data.aws_secretsmanager_secret.grafana_smtp[0].arn : null
+
+  grafana_smtp_secrets = var.enable_grafana_smtp_secret ? [
+    { name = "GF_SMTP_HOST", valueFrom = "${local.grafana_smtp_secret_arn}:SMTP_HOST::" },
+    { name = "GF_SMTP_USER", valueFrom = "${local.grafana_smtp_secret_arn}:SMTP_USER::" },
+    { name = "GF_SMTP_PASSWORD", valueFrom = "${local.grafana_smtp_secret_arn}:SMTP_PASSWORD::" },
+    { name = "GF_SMTP_FROM_ADDRESS", valueFrom = "${local.grafana_smtp_secret_arn}:SMTP_FROM::" },
+    { name = "GF_SMTP_FROM_NAME", valueFrom = "${local.grafana_smtp_secret_arn}:SMTP_NAME::" }
+  ] : []
 }
 
 resource "aws_cloudwatch_log_group" "logs" {
@@ -84,8 +101,9 @@ resource "aws_ecs_task_definition" "main" {
           rm -rf /mnt/config/provisioning/alerting/notification-policies.yaml
 
           # CRITICAL: Fix Permissions so other containers can read these files
-          chown -R 472:472 /mnt/config
-          chown -R 65534:65534 /mnt/config/prometheus.yml
+          # Ensure standard users (Prometheus: 65534, Grafana: 472) can read/write
+          # Using 777 is safe here because these are ephemeral task volumes.
+          chmod -R 777 /mnt/config
           chmod -R 777 /mnt/certs
           
           # DEBUG: Prove files exist in the logs
@@ -161,17 +179,13 @@ resource "aws_ecs_task_definition" "main" {
         "--homepath=/usr/share/grafana",
         "--packaging=docker"
       ]
-      secrets = [
-        { name = "GF_SMTP_HOST", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_HOST::" },
-        { name = "GF_SMTP_USER", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_USER::" },
-        { name = "GF_SMTP_PASSWORD", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_PASSWORD::" },
-        { name = "GF_SMTP_FROM_ADDRESS", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_FROM::" },
-        { name = "GF_SMTP_FROM_NAME", valueFrom = "${data.aws_secretsmanager_secret.grafana_smtp.arn}:SMTP_NAME::" }
-      ]
+
+      secrets = local.grafana_smtp_secrets
+
       environment = [
         { name = "GF_SECURITY_ADMIN_USER", value = "admin" },
         { name = "GF_SECURITY_ADMIN_PASSWORD", value = "admin" },
-        { name = "GF_SMTP_ENABLED", value = "true" },
+        { name = "GF_SMTP_ENABLED", value = var.enable_grafana_smtp_secret ? "true" : "false" },
         { name = "GF_SMTP_SKIP_VERIFY", value = "true" },
         { name = "GF_SMTP_STARTTLS_POLICY", value = "OpportunisticStartTLS" }
       ]

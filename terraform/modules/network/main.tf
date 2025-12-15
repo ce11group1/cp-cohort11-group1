@@ -15,17 +15,18 @@ resource "aws_vpc" "this" {
   tags                 = merge(var.tags, { Name = "${var.name_prefix}-vpc" })
 }
 
-# 2. Create Multiple Subnets (One per CIDR provided)
+# Create Multiple Subnets (One per CIDR provided)
 resource "aws_subnet" "public" {
-  count      = length(var.public_subnet_cidrs) # Create as many as there are CIDRs
+  count      = length(var.public_subnet_cidrs)
   vpc_id     = aws_vpc.this.id
   cidr_block = var.public_subnet_cidrs[count.index]
 
+  # FIX: Use element() to wrap around available AZs safely
   # Automatically pick a different AZ for each subnet
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
+  availability_zone = element(data.aws_availability_zones.available.names, count.index)
 
-  tags = merge(var.tags, { Name = "${var.name_prefix}-public-subnet-${count.index + 1}" })
+  map_public_ip_on_launch = true
+  tags                    = merge(var.tags, { Name = "${var.name_prefix}-public-subnet-${count.index + 1}" })
 }
 
 resource "aws_internet_gateway" "igw" {

@@ -40,3 +40,6 @@ create_buckets = true
 
 iot_topic      = "factory/plant1/line1"
 s3_bucket_name = "dev-iot-telemetry-storage"
+
+enable_cert_upload         = true
+enable_grafana_smtp_secret = true

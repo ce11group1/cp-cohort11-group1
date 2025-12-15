@@ -82,6 +82,19 @@ variable "cert_files" {
   }
 }
 
+# cert upload
+variable "enable_cert_upload" {
+  description = "Switch to enable/disable certificate uploads"
+  type        = bool
+  default     = true
+}
+
+# grafana smtp secret
+variable "enable_grafana_smtp_secret" {
+  type    = bool
+  default = true
+}
+
 # Switches
 variable "create_buckets" {
   type    = bool

@@ -112,6 +112,9 @@ module "s3_config" {
 
   # Add this line
   cert_files = var.cert_files
+
+  # cert upload
+  enable_cert_upload = var.enable_cert_upload
 }
 
 # IoT Simulator (ECS Fargate)
@@ -143,6 +146,9 @@ module "iot_ecs" {
   simulator_count  = var.simulator_count
   iot_endpoint     = module.iot.iot_endpoint
   repository_url   = module.ecr_simulator.repository_url
+
+  # grafana secrets
+  enable_grafana_smtp_secret = var.enable_grafana_smtp_secret
 
   # DOCKER IMAGE
   # Update this URI after running 'docker push'

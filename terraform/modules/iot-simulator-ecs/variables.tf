@@ -58,3 +58,14 @@ variable "environment" {
   default     = "dev"
   description = "Deployment environment (e.g., dev, staging, prod)"
 }
+
+# grafana secrets
+variable "enable_grafana_smtp_secret" {
+  type    = bool
+  default = true
+}
+
+variable "grafana_smtp_secret_name" {
+  type    = string
+  default = "grafana/smtp"
+}

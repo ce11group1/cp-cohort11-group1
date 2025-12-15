@@ -41,4 +41,12 @@ variable "cert_s3_bucket" {
 variable "cert_files" {
   type        = map(string)
   description = "Map of certificate and key filenames to upload to S3"
+  default     = {}
+}
+
+# cert upload
+variable "enable_cert_upload" {
+  description = "If true, certificates in the resources/certs folder will be uploaded to S3"
+  type        = bool
+  default     = true
 }
