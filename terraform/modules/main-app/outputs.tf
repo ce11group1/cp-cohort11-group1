@@ -27,7 +27,7 @@ output "ecs_cluster_name" {
 
 output "ecs_service_name" {
   description = "The name of the ECS Service running the simulator"
-  value       = module.iot_ecs.service_name 
+  value       = module.iot_ecs.service_name
   # Note: Ensure you add 'output "service_name" { value = aws_ecs_service.main.name }' to your module/iot-simulator-ecs/outputs.tf
 }
 
@@ -78,7 +78,7 @@ output "prometheus_port_info" {
 
 output "ecr_repository_url" {
   description = "The URL of the ECR repository to push images to"
-  value       = module.ecr_simulator.repository_url  # <--- Updated path
+  value       = module.ecr_simulator.repository_url # <--- Updated path
 }
 
 output "app_url" {
@@ -89,7 +89,7 @@ output "app_url" {
 output "docker_push_command" {
   description = "Helper command to push your image"
   # Update build context to './resources/app'
-  value       = <<EOT
+  value = <<EOT
 aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${module.ecr_simulator.repository_url}
 docker build -t iot-simulator ../../resources/app
 docker tag iot-simulator:latest ${module.ecr_simulator.repository_url}:latest
@@ -98,5 +98,5 @@ EOT
 }
 
 output "alb_dns" {
-  value = module.shared_alb.dns_name 
+  value = module.shared_alb.dns_name
 }

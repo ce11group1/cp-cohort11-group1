@@ -5,10 +5,10 @@
 
 terraform {
   backend "s3" {
-    bucket         = "grp1-ce11-dev-iot-tfstate"
-    key            = "dev/terraform.tfstate"
+    bucket         = "grp1-ce11-prod-iot-tfstate"
+    key            = "prod/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "grp1-ce11-dev-iot-locks"
+    dynamodb_table = "grp1-ce11-prod-iot-locks" # <--- UPDATE THIS AFTER 1st RUN
     encrypt        = true
   }
 }

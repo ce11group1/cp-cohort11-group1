@@ -27,7 +27,7 @@ output "ecs_cluster_name" {
 
 output "ecs_service_name" {
   description = "The name of the ECS Service running the simulator"
-  value       = module.app.ecs_service_name 
+  value       = module.app.ecs_service_name
 }
 
 output "iot_certificate_arn" {
@@ -51,7 +51,7 @@ output "iot_policy_name" {
 output "ecs_console_url" {
   description = "Click here to find your running Task and its Public IP"
   # FIX: Added ${} around module references
-  value       = "https://${var.region}.console.aws.amazon.com/ecs/v2/clusters/${module.app.ecs_cluster_name}/services/${module.app.ecs_service_name}/tasks?region=${var.region}"
+  value = "https://${var.region}.console.aws.amazon.com/ecs/v2/clusters/${module.app.ecs_cluster_name}/services/${module.app.ecs_service_name}/tasks?region=${var.region}"
 }
 
 output "grafana_port_info" {
@@ -72,13 +72,13 @@ output "ecr_repository_url" {
 output "app_url" {
   description = "Public URL for the IoT Simulator Grafana Dashboard"
   # FIX: Added ${} around module reference
-  value       = "http://${module.app.alb_dns}"
+  value = "http://${module.app.alb_dns}"
 }
 
 output "docker_push_command" {
   description = "Helper command to push your image"
   # FIX: Corrected the module path to be consistent with 'module.app.ecr_repository_url'
-  value       = <<EOT
+  value = <<EOT
 aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${module.app.ecr_repository_url}
 docker build -t iot-simulator ../../resources/app
 docker tag iot-simulator:latest ${module.app.ecr_repository_url}:latest

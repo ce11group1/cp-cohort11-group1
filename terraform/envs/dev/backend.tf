@@ -8,7 +8,7 @@ terraform {
     bucket         = "grp1-ce11-dev-iot-tfstate"
     key            = "dev/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "grp1-ce11-dev-iot-locks"
+    dynamodb_table = "grp1-ce11-dev-iot-locks" # <--- UPDATE THIS AFTER 1st RUN
     encrypt        = true
   }
 }
