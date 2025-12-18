@@ -122,3 +122,11 @@ variable "enable_grafana_smtp_secret" {
   type    = bool
   default = false
 }
+
+variable "iot_cert_files" {
+  type = object({
+    root_ca     = string
+    device_cert = string
+    private_key = string
+  })
+}

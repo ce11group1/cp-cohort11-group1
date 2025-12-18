@@ -51,4 +51,6 @@ module "app" {
   iot_topic      = var.iot_topic
   cert_files     = var.cert_files
   create_buckets = var.create_buckets
+
+  iot_cert_files = var.iot_cert_files
 }

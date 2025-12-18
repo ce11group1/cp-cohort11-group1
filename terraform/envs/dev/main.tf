@@ -56,4 +56,6 @@ module "app" {
 
   enable_grafana_smtp_secret = var.enable_grafana_smtp_secret
 
+  iot_cert_files = var.iot_cert_files
+
 }

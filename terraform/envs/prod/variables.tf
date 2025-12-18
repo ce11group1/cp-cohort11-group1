@@ -93,6 +93,14 @@ variable "create_backend_resources" {
   default = true
 }
 
+variable "iot_cert_files" {
+  type = object({
+    root_ca     = string
+    device_cert = string
+    private_key = string
+  })
+}
+
 # variable "config_s3_bucket" {
 #   type        = string
 #   description = "S3 bucket name for storing Prometheus/Grafana configs"
