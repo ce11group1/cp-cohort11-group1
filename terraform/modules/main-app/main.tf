@@ -115,9 +115,6 @@ module "s3_config" {
 
   # cert upload
   enable_cert_upload = var.enable_cert_upload
-
-  # iot cert files
-  iot_cert_files = var.iot_cert_files
 }
 
 # IoT Simulator (ECS Fargate)

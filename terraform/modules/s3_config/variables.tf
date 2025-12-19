@@ -38,24 +38,20 @@ variable "cert_s3_bucket" {
   description = "Name of the S3 bucket for storing IoT certificates"
 }
 
+
 variable "cert_files" {
   type        = map(string)
   description = "Map of certificate and key filenames to upload to S3"
-  default     = {}
+  default = {
+    root_ca     = "AmazonRootCA1.pem"
+    device_cert = "device-certificate.pem.crt"
+    private_key = "private.pem.key"
+  }
 }
 
 variable "enable_cert_upload" {
   description = "If true, certificates in the resources/certs folder will be uploaded to S3"
   type        = bool
-  default     = true
-  type    = bool
-  default = false
+  default     = false
 }
 
-variable "iot_cert_files" {
-  type = object({
-    root_ca     = string
-    device_cert = string
-    private_key = string
-  })
-}
