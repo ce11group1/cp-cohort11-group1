@@ -22,7 +22,7 @@ env:
 
 jobs:
   # ===============================
-  # CI: FORMAT + VALIDATE
+  # CI: FORMAT + VALIDATE (NO AWS)
   # ===============================
   terraform-ci:
     name: Terraform CI (fmt + validate) (NO AWS)
@@ -310,7 +310,7 @@ jobs:
           TF_VAR_smtp_from_name: "IoT Factory Simulator"
         run: terraform apply -auto-approve
 
-      - name: Export Terraform outputs
+      - name: Export Terraform outputs (PROD)
         id: tf_outputs
         working-directory: terraform/envs/prod
         run: |
