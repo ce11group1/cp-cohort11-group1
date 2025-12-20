@@ -69,3 +69,13 @@ variable "grafana_smtp_secret_name" {
   type    = string
   default = "grafana/smtp"
 }
+
+variable "telemetry_bucket_name" {
+  description = "Name of the S3 bucket for telemetry data used by ML scorer"
+  type        = string
+}
+
+variable "ml_scorer_image" {
+  description = "Docker image URI for the ML scorer container"
+  type        = string
+}

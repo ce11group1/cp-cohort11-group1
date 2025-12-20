@@ -43,3 +43,6 @@ s3_bucket_name = "dev-iot-telemetry-storage"
 
 enable_cert_upload         = true
 enable_grafana_smtp_secret = true
+
+ml_scorer_image = "255945442255.dkr.ecr.us-east-1.amazonaws.com/grp1-m1-scorer:latest"
+ml_jobs_image   = "255945442255.dkr.ecr.us-east-1.amazonaws.com/grp1-m1-jobs:latest"

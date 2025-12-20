@@ -125,7 +125,15 @@ variable "create_backend_resources" {
 #   default     = ["shilparg_2000@yahoo.com"]
 # }
 
+variable "ml_scorer_image" {
+  description = "ECR image for ML scorer service"
+  type        = string
+}
 
+variable "ml_jobs_image" {
+  description = "ECR image for ML training jobs"
+  type        = string
+}
 
 
 

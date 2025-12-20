@@ -193,7 +193,36 @@ resource "aws_ecs_task_definition" "main" {
         logDriver = "awslogs",
         options   = { "awslogs-group" = aws_cloudwatch_log_group.logs.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "grafana" }
       }
-    }
+    },
+
+  # --- 5. ML SCORER ---
+      {
+        name      = "ml-scorer"
+        image     = var.ml_scorer_image
+        essential = false
+        portMappings = [
+          { containerPort = 9200, hostPort = 9200, protocol = "tcp" }
+        ]
+        environment = [
+          { name = "AWS_REGION", value = "us-east-1" },
+          { name = "S3_BUCKET", value = var.telemetry_bucket_name },
+          { name = "MODEL_LATEST_KEY", value = "ml/models/latest.json" },
+          { name = "DRIFT_STATUS_KEY", value = "ml/drift/drift_status.json" },
+          { name = "SQS_QUEUE_URL", value = module.ml.model_reload_queue_url },
+          { name = "POLL_SQS", value = "true" },
+          { name = "FEATURES", value = "temperature,humidity" },
+          { name = "PORT", value = "9200" }
+        ]
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            awslogs-group         = "/ecs/${var.environment}/iot"
+            awslogs-region        = "us-east-1"
+            awslogs-stream-prefix = "ml-scorer"
+          }
+        }
+      }
+
   ])
 }
 
@@ -283,7 +312,7 @@ resource "aws_security_group_rule" "allow_alb_ingress" {
   security_group_id        = var.security_groups[0]    # Attach to the Task SG
 }
 
-# Security Rule: Allow ALB to talk to Prometheus
+# Security  Rule: Allow ALB to talk to Prometheus
 resource "aws_security_group_rule" "allow_alb_ingress_prometheus" {
   type                     = "ingress"
   from_port                = 9090
