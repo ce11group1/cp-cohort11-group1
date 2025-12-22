@@ -106,7 +106,7 @@ jobs:
         run: terraform plan -no-color -var-file="dev.tfvars"
 
   # ===============================
-  # APPLY DEV (FRESH START)
+  # APPLY DEV (SMART IMPORT)
   # ===============================
   apply-dev:
     name: Terraform Apply DEV
@@ -136,7 +136,15 @@ jobs:
         working-directory: terraform/envs/dev
         run: terraform init -upgrade -reconfigure
 
-      # NO "FIX STATE" SCRIPTS NEEDED HERE - FRESH START
+      # --- 🛡️ FIXED: SMART IMPORT SCRIPT (DEV) ---
+      - name: Fix IAM Conflicts (Smart Import)
+        working-directory: terraform/envs/dev
+        run: |
+          chmod +x ../../resources/scripts/tf-smart-import.sh
+          # Get Account ID dynamically
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          # Run Script for 'dev'
+          ../../resources/scripts/tf-smart-import.sh dev "$ACCOUNT_ID"
 
       - name: Terraform apply (DEV)
         working-directory: terraform/envs/dev
@@ -198,9 +206,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "Building for Repo: $ECR_REPO_URL"
-          # FIXED: Point to 'terraform/resources/app' and push 'latest' tag
           docker build -t "$ECR_REPO_URL:$IMAGE_TAG" -t "$ECR_REPO_URL:latest" terraform/resources/app
-
           docker push "$ECR_REPO_URL:$IMAGE_TAG"
           docker push "$ECR_REPO_URL:latest"
 
@@ -209,7 +215,7 @@ jobs:
           echo "Updating Service: $ECS_SERVICE in Cluster: $ECS_CLUSTER"
           aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --force-new-deployment
 
-      # 4. Wait & Fetch IP (Added for Dashboard)
+      # 4. Wait & Fetch IP
       - name: ⏳ Wait for Task to Start
         run: |
           echo "Waiting 30s for the new task to provision and get an IP..."
@@ -219,16 +225,13 @@ jobs:
         id: fetch_ip
         run: |
           TASK_ARN=$(aws ecs list-tasks --cluster "$ECS_CLUSTER" --service-name "$ECS_SERVICE" --query "taskArns[0]" --output text)
-
           if [ "$TASK_ARN" == "None" ] || [ -z "$TASK_ARN" ]; then
             echo "::warning::No running task found yet."
             echo "TASK_IP=N/A" >> $GITHUB_ENV
             exit 0
           fi
-
           ENI_ID=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" --output text)
           PUBLIC_IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$ENI_ID" --query "NetworkInterfaces[0].Association.PublicIp" --output text)
-
           echo "Found Public IP: $PUBLIC_IP"
           echo "TASK_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
@@ -241,22 +244,17 @@ jobs:
           echo "# 🚀 Capstone Deployment Successful!" >> $GITHUB_STEP_SUMMARY
           echo "### Environment: **DEV**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
           echo "| Service | Access Link | Description |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-
           echo "| 🏭 **IoT Simulator** | [**Open Application**]($ALB_URL) | Main App (via ALB) |" >> $GITHUB_STEP_SUMMARY
-
           if [ "$TASK_IP" != "N/A" ] && [ ! -z "$TASK_IP" ]; then
              echo "| 📊 **Grafana** | [**Open Grafana**](http://$TASK_IP:3000) | User: \`admin\` |" >> $GITHUB_STEP_SUMMARY
              echo "| 📈 **Prometheus** | [**Open Prometheus**](http://$TASK_IP:9090) | Metrics Backend |" >> $GITHUB_STEP_SUMMARY
           else
              echo "| ⚠️ **Monitoring** | IP Not Found | Check ECS Console manually |" >> $GITHUB_STEP_SUMMARY
           fi
-
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-
           echo "### 📦 Technical Details" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Resource | Identifier |" >> $GITHUB_STEP_SUMMARY
@@ -311,8 +309,6 @@ jobs:
         working-directory: terraform/envs/prod
         run: terraform init -upgrade -reconfigure
 
-      # NOTE: The "Fix Prod State" block causing the DEV import loop has been REMOVED here.
-
       # 4. PLAN
       - name: Terraform plan (PROD)
         working-directory: terraform/envs/prod
@@ -322,7 +318,7 @@ jobs:
         run: terraform plan -no-color -var-file="prod.tfvars"
 
   # ===============================
-  # APPLY PROD
+  # APPLY PROD (SMART IMPORT)
   # ===============================
   apply-prod:
     name: Terraform Apply PROD
@@ -330,7 +326,6 @@ jobs:
     needs: plan-prod
     if: github.event_name == 'push' && github.ref_name == 'main'
     environment: prod
-    # REMOVED: 'outputs' block is no longer needed because we use artifacts
 
     steps:
       - uses: actions/checkout@v4
@@ -354,13 +349,23 @@ jobs:
         working-directory: terraform/envs/prod
         run: terraform init -upgrade -reconfigure
 
-      # --- FINAL FIX: SWAP BUCKETS (Keep this until pipeline is green, then remove) ---
-      - name: Fix State Conflicts
+      # --- 🛡️ FIXED: SMART IMPORT SCRIPT (PROD) ---
+      # This handles any IAM roles that might be missing from state in Prod
+      - name: Fix IAM Conflicts (Smart Import)
+        working-directory: terraform/envs/prod
+        run: |
+          chmod +x ../../resources/scripts/tf-smart-import.sh
+          # Get Account ID dynamically
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          # Run Script for 'prod'
+          ../../resources/scripts/tf-smart-import.sh prod "$ACCOUNT_ID"
+
+      # --- KEEPING S3 FIX for now as it handles a specific bucket swap issue ---
+      - name: Fix State Conflicts (S3)
         working-directory: terraform/envs/prod
         env:
           AWS_REGION: us-east-1
         run: |
-          terraform init -upgrade -reconfigure
           echo "--- 1. UNTRACK DEV BUCKET ---"
           terraform state rm module.app.module.iot_storage.aws_s3_bucket.iot_data_bucket || true
           echo "--- 2. IMPORT PROD BUCKET ---"
@@ -373,7 +378,6 @@ jobs:
           TF_VAR_smtp_password: ${{ secrets.GRAFANA_SMTP_PASSWORD }}
         run: terraform apply -auto-approve -var-file="prod.tfvars"
 
-      # --- NEW: SAVE OUTPUTS TO FILE & UPLOAD ---
       - name: Save Outputs to Artifact
         id: tf_outputs
         working-directory: terraform/envs/prod
@@ -382,8 +386,6 @@ jobs:
           REPO_URL=$(terraform output -raw ecr_repository_url 2>/dev/null || terraform output -raw ecr_repo_url 2>/dev/null || echo "")
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           SERVICE=$(terraform output -raw ecs_service_name)
-
-          # NEW: Capture the ALB URL
           APP_URL=$(terraform output -raw app_url 2>/dev/null || echo "N/A")
 
           if [ -z "$REPO_URL" ]; then
@@ -394,7 +396,7 @@ jobs:
           echo "ECR_REPO_URL=$REPO_URL" >> deploy.env
           echo "ECS_CLUSTER=$CLUSTER" >> deploy.env
           echo "ECS_SERVICE=$SERVICE" >> deploy.env
-          echo "ALB_URL=$APP_URL" >> deploy.env  # <--- Saving ALB URL
+          echo "ALB_URL=$APP_URL" >> deploy.env
 
       - name: Upload Deploy Config
         uses: actions/upload-artifact@v4
@@ -434,12 +436,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "Building for Repo: $ECR_REPO_URL"
-
-          # FIX 1: Ensure we point to the correct folder (terraform/resources/app)
-          # FIX 2: Add '-t ...:latest' so we build the 'latest' tag too
           docker build -t "$ECR_REPO_URL:$IMAGE_TAG" -t "$ECR_REPO_URL:latest" terraform/resources/app
-
-          # FIX 3: Push BOTH tags to ECR
           docker push "$ECR_REPO_URL:$IMAGE_TAG"
           docker push "$ECR_REPO_URL:latest"
 
@@ -458,38 +455,30 @@ jobs:
         run: |
           # 1. List the tasks in the service
           TASK_ARN=$(aws ecs list-tasks --cluster "$ECS_CLUSTER" --service-name "$ECS_SERVICE" --query "taskArns[0]" --output text)
-
           if [ "$TASK_ARN" == "None" ] || [ -z "$TASK_ARN" ]; then
             echo "::warning::No running task found yet. Links might rely on ALB only."
             echo "TASK_IP=N/A" >> $GITHUB_ENV
             exit 0
           fi
-
           # 2. Get the Network Interface ID
           ENI_ID=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN" --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" --output text)
-
           # 3. Get the Public IP
           PUBLIC_IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$ENI_ID" --query "NetworkInterfaces[0].Association.PublicIp" --output text)
-
           echo "Found Public IP: $PUBLIC_IP"
           echo "TASK_IP=$PUBLIC_IP" >> $GITHUB_ENV
 
       - name: 📝 Generate Deployment Dashboard
         if: always()
         env:
-          # --- FIX: Define the variable here so it is visible to this step ---
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "# 🚀 Capstone Deployment Successful!" >> $GITHUB_STEP_SUMMARY
           echo "### Environment: **PROD**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
           echo "| Service | Access Link | Description |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-
           # 1. IoT Simulator (ALB)
           echo "| 🏭 **IoT Simulator** | [**Open Application**]($ALB_URL) | Main App (via ALB) |" >> $GITHUB_STEP_SUMMARY
-
           # 2. Monitoring (Grafana/Prometheus)
           if [ "$TASK_IP" != "N/A" ] && [ ! -z "$TASK_IP" ]; then
             echo "| 📊 **Grafana** | [**Open Grafana**](http://$TASK_IP:3000) | User: \`admin\` |" >> $GITHUB_STEP_SUMMARY
@@ -497,19 +486,14 @@ jobs:
           else
             echo "| ⚠️ **Monitoring** | IP Not Found | Check ECS Console manually |" >> $GITHUB_STEP_SUMMARY
           fi
-
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-
           echo "### 📦 Technical Details" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Resource | Identifier |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
           echo "| **ECR Repo** | \`$ECR_REPO_URL\` |" >> $GITHUB_STEP_SUMMARY
-
-          # Now this will work because we defined it in 'env' above
           echo "| **Docker Image Tag** | \`$IMAGE_TAG\` |" >> $GITHUB_STEP_SUMMARY
-
           echo "| **ECS Cluster** | \`$ECS_CLUSTER\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **ECS Service** | \`$ECS_SERVICE\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Task Public IP** | \`$TASK_IP\` |" >> $GITHUB_STEP_SUMMARY
