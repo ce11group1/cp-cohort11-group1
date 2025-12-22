@@ -106,7 +106,7 @@ jobs:
         run: terraform plan -no-color -var-file="dev.tfvars"
 
   # ===============================
-  # APPLY DEV (PERMANENT IMPORT FIX)
+  # APPLY DEV (FRESH START)
   # ===============================
   apply-dev:
     name: Terraform Apply DEV
@@ -118,7 +118,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::255945442255:role/GITHUB_OIDC_ROLE_CP
+          role-to-assume: arn:aws:iam::255945442255:role/GITHUB_OIDC_ROLE
           aws-region: us-east-1
 
       - uses: hashicorp/setup-terraform@v3
@@ -136,61 +136,7 @@ jobs:
         working-directory: terraform/envs/dev
         run: terraform init -upgrade -reconfigure
 
-      # --- PERMANENT FIX: AUTO-IMPORT SCRIPT ---
-      # This script checks if a resource exists. If yes, it imports it.
-      # This works for both "Clean State" and "Zombie State".
-      - name: Resolve State Conflicts
-        working-directory: terraform/envs/dev
-        env:
-          AWS_REGION: us-east-1
-        run: |
-          echo "--- STARTING SMART IMPORT ---"
-
-          # Function to import a resource if it exists in AWS but not in State
-          import_if_exists() {
-            local TF_ADDR=$1
-            local AWS_ID=$2
-            local AWS_CMD=$3
-            
-            # Check if resource is already in Terraform State
-            if terraform state show "$TF_ADDR" > /dev/null 2>&1; then
-              echo "✅ $TF_ADDR is already in state."
-              return
-            fi
-
-            # Check if resource exists in AWS
-            echo "🔍 Checking AWS for $TF_ADDR..."
-            local ARN=$(eval "$AWS_CMD" 2>/dev/null)
-            
-            if [ ! -z "$ARN" ] && [ "$ARN" != "None" ]; then
-              echo "⚠️ Found Zombie Resource: $ARN"
-              echo "📥 Importing into Terraform state..."
-              terraform import "$TF_ADDR" "$ARN" || echo "Import failed (might be okay if previously managed)"
-            else
-              echo "ok: Resource does not exist in AWS. Terraform will create it."
-            fi
-          }
-
-          # 1. Import Target Groups (The source of your error)
-          import_if_exists "module.app.module.iot_ecs.aws_lb_target_group.grafana" \
-            "grp1-ce11-dev-iot-graf-tg" \
-            "aws elbv2 describe-target-groups --names grp1-ce11-dev-iot-graf-tg --query 'TargetGroups[0].TargetGroupArn' --output text"
-
-          import_if_exists "module.app.module.iot_ecs.aws_lb_target_group.prometheus" \
-            "grp1-ce11-dev-iot-prom-tg" \
-            "aws elbv2 describe-target-groups --names grp1-ce11-dev-iot-prom-tg --query 'TargetGroups[0].TargetGroupArn' --output text"
-
-          # 2. Import ALB (Just in case)
-          import_if_exists "module.app.module.shared_alb.aws_lb.main" \
-            "grp1-ce11-dev-iot-alb" \
-            "aws elbv2 describe-load-balancers --names grp1-ce11-dev-iot-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text"
-
-          # 3. Import Stable Resources (ECR, S3, IAM) - Standard Safety
-          import_if_exists "module.app.module.ecr_simulator.aws_ecr_repository.main" "grp1-ce11-dev-iot-simulator" "echo grp1-ce11-dev-iot-simulator"
-          import_if_exists "module.app.module.iot_storage.aws_s3_bucket.iot_data_bucket" "dev-iot-telemetry-storage" "echo dev-iot-telemetry-storage"
-          # (Add other IAM roles here if needed, but usually the above are the blockers)
-
-          echo "--- SMART IMPORT COMPLETE ---"
+      # NO "FIX STATE" SCRIPTS NEEDED HERE - FRESH START
 
       - name: Terraform apply (DEV)
         working-directory: terraform/envs/dev
@@ -208,11 +154,6 @@ jobs:
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           SERVICE=$(terraform output -raw ecs_service_name)
           APP_URL=$(terraform output -raw app_url 2>/dev/null || echo "N/A")
-
-          if [ -z "$REPO_URL" ]; then
-            echo "::error::ECR URL is empty!"
-            exit 1
-          fi
 
           echo "ECR_REPO_URL=$REPO_URL" >> deploy.env
           echo "ECS_CLUSTER=$CLUSTER" >> deploy.env
