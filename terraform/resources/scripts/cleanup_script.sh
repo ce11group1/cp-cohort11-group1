@@ -1,40 +1,82 @@
-# 1. Delete ECS Service (The blocker)
-aws ecs update-service --cluster grp1-ce11-dev-iot-cluster --service dev-iot-service --desired-count 0
-aws ecs delete-service --cluster grp1-ce11-dev-iot-cluster --service dev-iot-service --force
-echo "Waiting for service deletion..."
-sleep 20
+#!/bin/bash
+# Usage: ./cleanup.sh
 
-# 2. Delete Load Balancer (ALB)
-ALB_ARN=$(aws elbv2 describe-load-balancers --names grp1-ce11-dev-iot-alb --query "LoadBalancers[0].LoadBalancerArn" --output text)
-if [ "$ALB_ARN" != "None" ]; then aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN"; fi
+echo "--- 🧨 STARTING NUCLEAR CLEANUP ---"
+
+# --- 1. ECS & NETWORK ---
+echo "1. Deleting ECS Service..."
+aws ecs update-service --cluster grp1-ce11-dev-iot-cluster --service dev-iot-service --desired-count 0 2>/dev/null
+aws ecs delete-service --cluster grp1-ce11-dev-iot-cluster --service dev-iot-service --force 2>/dev/null
+echo "   Waiting 15s for service to drain..."
 sleep 15
 
-# 3. Delete Target Groups
-TG1=$(aws elbv2 describe-target-groups --names grp1-ce11-dev-iot-graf-tg --query "TargetGroups[0].TargetGroupArn" --output text)
-if [ "$TG1" != "None" ]; then aws elbv2 delete-target-group --target-group-arn "$TG1"; fi
+echo "2. Deleting Load Balancer..."
+ALB_ARN=$(aws elbv2 describe-load-balancers --names grp1-ce11-dev-iot-alb --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null)
+if [ "$ALB_ARN" != "None" ] && [ ! -z "$ALB_ARN" ]; then 
+  aws elbv2 delete-load-balancer --load-balancer-arn "$ALB_ARN"
+fi
+sleep 10
 
-TG2=$(aws elbv2 describe-target-groups --names grp1-ce11-dev-iot-prom-tg --query "TargetGroups[0].TargetGroupArn" --output text)
-if [ "$TG2" != "None" ]; then aws elbv2 delete-target-group --target-group-arn "$TG2"; fi
+echo "3. Deleting Target Groups..."
+TG1=$(aws elbv2 describe-target-groups --names grp1-ce11-dev-iot-graf-tg --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null)
+if [ "$TG1" != "None" ] && [ ! -z "$TG1" ]; then aws elbv2 delete-target-group --target-group-arn "$TG1"; fi
 
-# 4. Delete IAM Roles (The "Already Exists" errors)
-aws iam detach-role-policy --role-name dev-iot-execution-role --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-aws iam delete-role --role-name dev-iot-execution-role
+TG2=$(aws elbv2 describe-target-groups --names grp1-ce11-dev-iot-prom-tg --query "TargetGroups[0].TargetGroupArn" --output text 2>/dev/null)
+if [ "$TG2" != "None" ] && [ ! -z "$TG2" ]; then aws elbv2 delete-target-group --target-group-arn "$TG2"; fi
 
-aws iam delete-role-policy --role-name dev-iot-task-role --policy-name dev-iot-task-policy
-aws iam delete-role --role-name dev-iot-task-role
 
-aws iam detach-role-policy --role-name iot-dev-cw-logger-role --policy-arn arn:aws:iam::255945442255:policy/iot-dev-cw-logger-policy
-aws iam delete-role --role-name iot-dev-cw-logger-role
+# --- 2. IAM ROLES ---
+echo "4. Cleaning up IAM Roles..."
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# 5. Delete IoT Policy
-aws iot delete-policy --policy-name iot-sim-policy-dev
+# A) Execution Role
+aws iam detach-role-policy --role-name dev-iot-execution-role --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null
+aws iam delete-role --role-name dev-iot-execution-role 2>/dev/null
 
-# 6. Delete CloudWatch Log Groups
-aws logs delete-log-group --log-group-name /ecs/iot-simulator
-aws logs delete-log-group --log-group-name /aws/iot/rules/dev
+# B) Task Role
+aws iam delete-role-policy --role-name dev-iot-task-role --policy-name dev-iot-task-policy 2>/dev/null
+aws iam delete-role --role-name dev-iot-task-role 2>/dev/null
 
-# 7. Delete ECR Repository (Force delete images too)
-aws ecr delete-repository --repository-name grp1-ce11-dev-iot-simulator --force
+# C) IoT Logging Role
+aws iam detach-role-policy --role-name iot-dev-cw-logger-role --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/iot-dev-cw-logger-policy" 2>/dev/null
+aws iam delete-role --role-name iot-dev-cw-logger-role 2>/dev/null
 
-# 8. Delete S3 Bucket (Force delete contents too)
-aws s3 rb s3://dev-iot-telemetry-storage --force
+# D) IoT Rule S3 Role
+aws iam detach-role-policy --role-name iot-rule-dev-s3-writer-role --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/iot-rule-dev-s3-write-policy" 2>/dev/null
+aws iam delete-role --role-name iot-rule-dev-s3-writer-role 2>/dev/null
+
+
+# --- 3. IAM POLICIES ---
+echo "5. Deleting Custom IAM Policies..."
+aws iam delete-policy --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/iot-dev-cw-logger-policy" 2>/dev/null
+aws iam delete-policy --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/iot-rule-dev-s3-write-policy" 2>/dev/null
+
+
+# --- 4. IOT CORE ---
+echo "6. Cleaning up IoT Core..."
+# Delete the Topic Rule
+aws iot delete-topic-rule --rule-name "dev_iot_telemetry_rule" 2>/dev/null || aws iot delete-topic-rule --rule-name "dev-iot-telemetry-rule" 2>/dev/null
+
+# Delete the Policy
+aws iot delete-policy --policy-name iot-sim-policy-dev 2>/dev/null
+
+
+# --- 5. LOGS & STORAGE ---
+echo "7. Deleting Log Groups..."
+aws logs delete-log-group --log-group-name /ecs/iot-simulator 2>/dev/null
+aws logs delete-log-group --log-group-name /aws/iot/rules/dev 2>/dev/null
+
+echo "8. Deleting ECR..."
+aws ecr delete-repository --repository-name grp1-ce11-dev-iot-simulator --force 2>/dev/null
+
+echo "9. Deleting S3..."
+aws s3 rb s3://dev-iot-telemetry-storage --force 2>/dev/null
+
+echo "--- 🏁 CLEANUP COMPLETE ---"
+echo ""
+echo "⚠️  ======================================================="
+echo "⚠️  CRITICAL NEXT STEP:"
+echo "⚠️  You MUST now delete your 'terraform.tfstate' file."
+echo "⚠️  - If Local: rm terraform/envs/dev/terraform.tfstate"
+echo "⚠️  - If S3: Go to Console > S3 > dev-tfstate-bucket > Delete file"
+echo "⚠️  ======================================================="

@@ -28,14 +28,23 @@ import_if_exists() {
   fi
 }
 
-# --- 2. DEFINE RESOURCE NAMES (Based on standard naming convention) ---
-# NOTE: These must match your Terraform variable naming patterns exactly!
+# --- 2. DEFINE RESOURCE NAMES (Must match Terraform naming convention) ---
 
+# ECS Roles
 EXEC_ROLE="${ENV}-iot-execution-role"
 TASK_ROLE="${ENV}-iot-task-role"
+
+# IoT Policy
 IOT_POLICY="iot-sim-policy-${ENV}"
+
+# Logging Role & Policy
 LOG_ROLE="iot-${ENV}-cw-logger-role"
 LOG_POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/iot-${ENV}-cw-logger-policy"
+
+# --- NEW: IoT Rule S3 Role & Policy (Added to fix your error) ---
+RULE_ROLE="iot-rule-${ENV}-s3-writer-role"
+RULE_POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/iot-rule-${ENV}-s3-write-policy"
+
 
 # --- 3. EXECUTE IMPORTS ---
 
@@ -49,5 +58,9 @@ import_if_exists "module.app.module.iot.aws_iot_policy.sim_policy"        "$IOT_
 # Logging Roles & Policies
 import_if_exists "module.app.module.iot_logging.aws_iam_policy.iot_logging_policy" "$LOG_POLICY_ARN"
 import_if_exists "module.app.module.iot_logging.aws_iam_role.iot_logging_role"     "$LOG_ROLE"
+
+# --- NEW: IoT Rule S3 Role & Policy ---
+import_if_exists "module.app.module.iot_rule.aws_iam_role.iot_rule_s3_role"     "$RULE_ROLE"
+import_if_exists "module.app.module.iot_rule.aws_iam_policy.iot_rule_s3_policy" "$RULE_POLICY_ARN"
 
 echo "--- 🛡️ SMART IMPORT COMPLETE ---"
