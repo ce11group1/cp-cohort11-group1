@@ -5,6 +5,7 @@ on:
     branches: [dev, main]
   push:
     branches: [dev, main]
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -24,7 +25,7 @@ jobs:
   # CI: FORMAT + VALIDATE (NO AWS)
   # ===============================
   terraform-ci:
-    name: Terraform CI (fmt + validate)
+    name: Terraform CI (fmt + validate) (NO AWS)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -38,21 +39,12 @@ jobs:
       - name: Terraform fmt (check)
         run: terraform fmt -check -recursive terraform
 
-      - name: Terraform init (dev, no backend)
-        working-directory: terraform/envs/dev
-        run: terraform init -backend=false
-
-      - name: Terraform validate (dev)
-        working-directory: terraform/envs/dev
-        run: terraform validate
-
-      - name: Terraform init (prod, no backend)
-        working-directory: terraform/envs/prod
-        run: terraform init -backend=false
-
-      - name: Terraform validate (prod)
-        working-directory: terraform/envs/prod
-        run: terraform validate
+      - name: Terraform validate (dev & prod)
+        run: |
+          terraform -chdir=terraform/envs/dev init -backend=false
+          terraform -chdir=terraform/envs/dev validate
+          terraform -chdir=terraform/envs/prod init -backend=false
+          terraform -chdir=terraform/envs/prod validate
 
   # ===============================
   # PLAN DEV (AWS OIDC)
@@ -72,24 +64,30 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
+      # 1. Update SMTP Secret (Script)
+      - name: Set Grafana SMTP Secret
+        env:
+          SMTP_USER: ${{ secrets.GRAFANA_SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.GRAFANA_SMTP_PASSWORD }}
+        run: |
+          chmod +x terraform/resources/scripts/set-grafana-smtp-secret.sh
+          ./terraform/resources/scripts/set-grafana-smtp-secret.sh
 
+      # 2. Inject IoT Certificates & Verify
       - name: Inject IoT Certificates
         run: |
-          # 1. Create directory
           mkdir -p terraform/resources/certs
-
-          # 2. Decode secrets to files
           echo "${{ secrets.TF_VAR_cert_base64_root }}"   | base64 -d > terraform/resources/certs/AmazonRootCA1.pem
           echo "${{ secrets.TF_VAR_cert_base64_device }}" | base64 -d > terraform/resources/certs/device-certificate.pem.crt
           echo "${{ secrets.TF_VAR_cert_base64_key }}"    | base64 -d > terraform/resources/certs/private.pem.key
 
-          # 3. List directory to verify (Debug)
-          echo "Listing injected certificates:"
+          echo "Verifying injected certificates:"
           ls -l terraform/resources/certs/
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform init (DEV)
         working-directory: terraform/envs/dev
@@ -98,16 +96,12 @@ jobs:
       - name: Terraform plan (DEV)
         working-directory: terraform/envs/dev
         env:
-          # Keep these as GitHub Secrets if Terraform creates/updates AWS Secrets Manager
-          TF_VAR_smtp_host: ${{ secrets.SMTP_HOST }}
-          TF_VAR_smtp_user: ${{ secrets.SMTP_USER }}
-          TF_VAR_smtp_password: ${{ secrets.SMTP_PASSWORD }}
-          TF_VAR_smtp_from_address: ${{ secrets.SMTP_FROM_ADDRESS }}
-          TF_VAR_smtp_from_name: ${{ secrets.SMTP_FROM_NAME }}
-        run: |
-          terraform plan -no-color \
-            -var="enable_cert_upload=false" \
-            -var="enable_grafana_smtp_secret=false"
+          TF_VAR_smtp_host: "smtp.gmail.com:587"
+          TF_VAR_smtp_user: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_password: ${{ secrets.GRAFANA_SMTP_PASSWORD }}
+          TF_VAR_smtp_from_address: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_from_name: "IoT Factory Simulator"
+        run: terraform plan -no-color
 
   # ===============================
   # APPLY DEV (push to dev only)
@@ -137,18 +131,15 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+      # 1. Inject IoT Certificates & Verify
       - name: Inject IoT Certificates
         run: |
-          # 1. Create directory
           mkdir -p terraform/resources/certs
-
-          # 2. Decode secrets to files
           echo "${{ secrets.TF_VAR_cert_base64_root }}"   | base64 -d > terraform/resources/certs/AmazonRootCA1.pem
           echo "${{ secrets.TF_VAR_cert_base64_device }}" | base64 -d > terraform/resources/certs/device-certificate.pem.crt
           echo "${{ secrets.TF_VAR_cert_base64_key }}"    | base64 -d > terraform/resources/certs/private.pem.key
 
-          # 3. List directory to verify (Debug)
-          echo "Listing injected certificates:"
+          echo "Verifying injected certificates:"
           ls -l terraform/resources/certs/
 
       - name: Terraform init (DEV)
@@ -158,11 +149,11 @@ jobs:
       - name: Terraform apply (DEV)
         working-directory: terraform/envs/dev
         env:
-          TF_VAR_smtp_host: ${{ secrets.SMTP_HOST }}
-          TF_VAR_smtp_user: ${{ secrets.SMTP_USER }}
-          TF_VAR_smtp_password: ${{ secrets.SMTP_PASSWORD }}
-          TF_VAR_smtp_from_address: ${{ secrets.SMTP_FROM_ADDRESS }}
-          TF_VAR_smtp_from_name: ${{ secrets.SMTP_FROM_NAME }}
+          TF_VAR_smtp_host: "smtp.gmail.com:587"
+          TF_VAR_smtp_user: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_password: ${{ secrets.GRAFANA_SMTP_PASSWORD }}
+          TF_VAR_smtp_from_address: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_from_name: "IoT Factory Simulator"
         run: terraform apply -auto-approve
 
       - name: Export Terraform outputs (DEV)
@@ -174,10 +165,10 @@ jobs:
           echo "ecs_service_name=$(terraform output -raw ecs_service_name)" >> "$GITHUB_OUTPUT"
 
   # ===============================
-  # DEPLOY DEV (after infra apply)
+  # DEPLOY DEV (after infra apply)(App)
   # ===============================
   deploy-dev:
-    name: Deploy DEV (Build → ECR → ECS)
+    name: Deploy DEV ((Build → ECR → ECS)(App)
     runs-on: ubuntu-latest
     needs: apply-dev
     if: github.event_name == 'push' && github.ref_name == 'dev'
@@ -207,10 +198,7 @@ jobs:
           CLUSTER: ${{ needs.apply-dev.outputs.ecs_cluster_name }}
           SERVICE: ${{ needs.apply-dev.outputs.ecs_service_name }}
         run: |
-          aws ecs update-service \
-            --cluster "$CLUSTER" \
-            --service "$SERVICE" \
-            --force-new-deployment
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment
 
   # ===============================
   # PLAN PROD (main only)
@@ -230,6 +218,26 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # 1. Update SMTP Secret (Script)
+      - name: Set Grafana SMTP Secret
+        env:
+          SMTP_USER: ${{ secrets.GRAFANA_SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.GRAFANA_SMTP_PASSWORD }}
+        run: |
+          chmod +x terraform/resources/scripts/set-grafana-smtp-secret.sh
+          ./terraform/resources/scripts/set-grafana-smtp-secret.sh
+
+      # 2. Inject IoT Certificates & Verify
+      - name: Inject IoT Certificates
+        run: |
+          mkdir -p terraform/resources/certs
+          echo "${{ secrets.TF_VAR_cert_base64_root }}"   | base64 -d > terraform/resources/certs/AmazonRootCA1.pem
+          echo "${{ secrets.TF_VAR_cert_base64_device }}" | base64 -d > terraform/resources/certs/device-certificate.pem.crt
+          echo "${{ secrets.TF_VAR_cert_base64_key }}"    | base64 -d > terraform/resources/certs/private.pem.key
+
+          echo "Verifying injected certificates:"
+          ls -l terraform/resources/certs/
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -242,11 +250,11 @@ jobs:
       - name: Terraform plan (PROD)
         working-directory: terraform/envs/prod
         env:
-          TF_VAR_smtp_host: ${{ secrets.SMTP_HOST }}
-          TF_VAR_smtp_user: ${{ secrets.SMTP_USER }}
-          TF_VAR_smtp_password: ${{ secrets.SMTP_PASSWORD }}
-          TF_VAR_smtp_from_address: ${{ secrets.SMTP_FROM_ADDRESS }}
-          TF_VAR_smtp_from_name: ${{ secrets.SMTP_FROM_NAME }}
+          TF_VAR_smtp_host: "smtp.gmail.com:587"
+          TF_VAR_smtp_user: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_password: ${{ secrets.GRAFANA_SMTP_PASSWORD }}
+          TF_VAR_smtp_from_address: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_from_name: "IoT Factory Simulator"
         run: terraform plan -no-color
 
   # ===============================
@@ -277,6 +285,17 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+      # 1. Inject IoT Certificates & Verify
+      - name: Inject IoT Certificates
+        run: |
+          mkdir -p terraform/resources/certs
+          echo "${{ secrets.TF_VAR_cert_base64_root }}"   | base64 -d > terraform/resources/certs/AmazonRootCA1.pem
+          echo "${{ secrets.TF_VAR_cert_base64_device }}" | base64 -d > terraform/resources/certs/device-certificate.pem.crt
+          echo "${{ secrets.TF_VAR_cert_base64_key }}"    | base64 -d > terraform/resources/certs/private.pem.key
+
+          echo " Verifying injected certificates:"
+          ls -l terraform/resources/certs/
+
       - name: Terraform init (PROD)
         working-directory: terraform/envs/prod
         run: terraform init -upgrade -reconfigure
@@ -284,11 +303,11 @@ jobs:
       - name: Terraform apply (PROD)
         working-directory: terraform/envs/prod
         env:
-          TF_VAR_smtp_host: ${{ secrets.SMTP_HOST }}
-          TF_VAR_smtp_user: ${{ secrets.SMTP_USER }}
-          TF_VAR_smtp_password: ${{ secrets.SMTP_PASSWORD }}
-          TF_VAR_smtp_from_address: ${{ secrets.SMTP_FROM_ADDRESS }}
-          TF_VAR_smtp_from_name: ${{ secrets.SMTP_FROM_NAME }}
+          TF_VAR_smtp_host: "smtp.gmail.com:587"
+          TF_VAR_smtp_user: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_password: ${{ secrets.GRAFANA_SMTP_PASSWORD }}
+          TF_VAR_smtp_from_address: ${{ secrets.GRAFANA_SMTP_USER }}
+          TF_VAR_smtp_from_name: "IoT Factory Simulator"
         run: terraform apply -auto-approve
 
       - name: Export Terraform outputs (PROD)
@@ -300,10 +319,10 @@ jobs:
           echo "ecs_service_name=$(terraform output -raw ecs_service_name)" >> "$GITHUB_OUTPUT"
 
   # ===============================
-  # DEPLOY PROD (after infra apply)
+  # DEPLOY PROD (after infra apply)(App)
   # ===============================
   deploy-prod:
-    name: Deploy PROD (Build → ECR → ECS)
+    name: Deploy PROD (Build → ECR → ECS)(App)
     runs-on: ubuntu-latest
     needs: apply-prod
     if: github.event_name == 'push' && github.ref_name == 'main'
@@ -334,7 +353,4 @@ jobs:
           CLUSTER: ${{ needs.apply-prod.outputs.ecs_cluster_name }}
           SERVICE: ${{ needs.apply-prod.outputs.ecs_service_name }}
         run: |
-          aws ecs update-service \
-            --cluster "$CLUSTER" \
-            --service "$SERVICE" \
-            --force-new-deployment
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment
