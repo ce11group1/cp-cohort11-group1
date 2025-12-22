@@ -3,12 +3,12 @@
 # STEP 3: UNCOMMENT BELOW, AND RUN 'terraform init' TO MIGRATE STATE.
 # -----------------------------------------------------------------------------
 
-# terraform {
-#   backend "s3" {
-#     bucket         = "grp1-ce11-dev-iot-tfstate"
-#     key            = "dev/terraform.tfstate"
-#     region         = "us-east-1"
-#     dynamodb_table = "grp1-ce11-dev-iot-locks" # <--- UPDATE THIS AFTER 1st RUN
-#     encrypt        = true
-#   }
-# }
+terraform {
+  backend "s3" {
+    bucket         = "grp1-ce11-dev-iot-tfstate"
+    key            = "dev/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "grp1-ce11-dev-iot-locks" # <--- UPDATE THIS AFTER 1st RUN
+    encrypt        = true
+  }
+}
