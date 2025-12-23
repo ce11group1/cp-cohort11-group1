@@ -16,18 +16,18 @@ locals {
 ################################################################################
 # 1. BACKEND INFRASTRUCTURE
 ################################################################################
-module "backend_infra" {
-  source = "../backend-infra"
+# module "backend_infra" {
+#   source = "../backend-infra"
 
-  # IMPORTANT: Always keep this TRUE for the main project.
-  # Only set to false if you lost your state file but the bucket still exists.
-  create_backend_resources = true
+#   # IMPORTANT: Always keep this TRUE for the main project.
+#   # Only set to false if you lost your state file but the bucket still exists.
+#   create_backend_resources = true
 
-  # Names must be globally unique
-  bucket_name         = "${local.resource_prefix}-state-bucket"
-  dynamodb_table_name = "${local.resource_prefix}-locks"
-  tags                = local.common_tags
-}
+#   # Names must be globally unique
+#   bucket_name         = "${local.resource_prefix}-state-bucket"
+#   dynamodb_table_name = "${local.resource_prefix}-locks"
+#   tags                = local.common_tags
+# }
 
 ################################################################################
 # 2. APPLICATION MODULES
