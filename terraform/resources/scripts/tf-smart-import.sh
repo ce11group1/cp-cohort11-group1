@@ -97,13 +97,13 @@ import_if_exists "module.app.module.iot_ecs.aws_lb_target_group.prometheus" "$TG
 # ==========================================
 # 4. S3 CONFIG & CERTS (Self-Healing Fix)
 # ==========================================
-# Note: These names must match your prod.tfvars exactly
+# These names are taken directly from your error log
 CONFIG_BUCKET="grp1-ce11-${ENV}-iot-config"
 CERTS_BUCKET="grp1-ce11-${ENV}-iot-certs"
 
-echo "🔎 Checking for Config and Cert buckets..."
+echo "🔎 Checking for existing Config/Certs buckets..."
 
-# We add the [0] because your error log showed: aws_s3_bucket.config_bucket[0]
+# We use the [0] index because your error log showed: cert_bucket[0]
 import_if_exists "module.app.module.s3_config.aws_s3_bucket.config_bucket[0]" "$CONFIG_BUCKET"
 import_if_exists "module.app.module.s3_config.aws_s3_bucket.cert_bucket[0]" "$CERTS_BUCKET"
 
