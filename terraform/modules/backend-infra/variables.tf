@@ -1,12 +1,23 @@
 # modules/backend-infra/variables.tf
 
-variable "create_backend_resources" {
-  description = "Set to true to create resources. Set to false to use existing ones."
-  type        = bool
-  default     = true
+variable "bucket_name" {
+  type        = string
+  description = "The name of the S3 bucket for Terraform state"
 }
 
-# Keep your existing variables...
-variable "bucket_name" {}
-variable "dynamodb_table_name" {}
-variable "tags" { default = {} }
+variable "dynamodb_table_name" {
+  type        = string
+  description = "The name of the DynamoDB table for state locking"
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}
+
+# --- THE TOGGLE SWITCH ---
+variable "create_backend_resources" {
+  type        = bool
+  description = "Set to true to create resources. Set to false to read existing resources."
+  default     = false # Default to 'false' so CI/CD (which uses the script) is safe.
+}

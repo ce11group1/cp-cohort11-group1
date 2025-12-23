@@ -1,0 +1,43 @@
+graph TD
+    subgraph "Dev Environment (Laptop)"
+        Code["Source Code<br/>(Dockerfile & Python)"]
+        DockerBuild["Docker Build & Push"]
+    end
+
+    subgraph "AWS Cloud (Region: us-east-1)"
+        
+        subgraph "Artifact Storage"
+            ECR[("Amazon ECR<br/>(Docker Image Repo)")]
+        end
+
+        subgraph "ECS Cluster (Fargate)"
+            subgraph "ECS Task: IoT Simulator Stack"
+                Init[("Init Container")]
+                Sim[("IoT Simulator Container<br/>(Runs Python App)")]
+                Prom[("Prometheus Container")]
+                Graf[("Grafana Container")]
+            end
+        end
+
+        subgraph "IoT & Storage"
+            IoTCore["AWS IoT Core"]
+            S3["S3 Buckets"]
+        end
+    end
+
+    %% Build Flow
+    Code --> DockerBuild
+    DockerBuild -- "Push Image" --> ECR
+
+    %% Deployment Flow
+    ECR -- "ECS Pulls Image" --> Sim
+    
+    %% Internal Connections
+    Init -- "Setup Shared Volume" --> Sim
+    Sim -- "MQTT Data" --> IoTCore
+    IoTCore --> S3
+
+    %% Styling
+    style ECR fill:#f58536,stroke:#b85450,stroke-width:2px,color:white
+    style Sim fill:#dae8fc,stroke:#6c8ebf
+    style DockerBuild fill:#f5f5f5,stroke:#666666,stroke-dasharray: 5 5

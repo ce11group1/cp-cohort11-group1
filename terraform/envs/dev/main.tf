@@ -15,9 +15,11 @@ locals {
 module "backend_infra" {
   source = "../../modules/backend-infra"
 
-  create_backend_resources = var.create_backend_resources
-  bucket_name              = "grp1-ce11-dev-iot-state-bucket" # Must match backend.tf
-  dynamodb_table_name      = "grp1-ce11-dev-iot-locks"        # Must match backend.tf
+  #create_backend_resources = var.create_backend_resources
+  # Force it to true so we can import
+  create_backend_resources = true
+  bucket_name              = "grp1-ce11-dev-iot-tfstate" # Must match backend.tf
+  dynamodb_table_name      = "grp1-ce11-dev-iot-locks"   # Must match backend.tf
   tags                     = local.common_tags
 }
 

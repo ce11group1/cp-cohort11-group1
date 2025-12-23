@@ -35,8 +35,8 @@ cert_files = {
   private_key = "private.pem.key"
 }
 
-create_buckets = false
-#create_backend_resources = false
+create_buckets           = false
+create_backend_resources = false
 
 iot_topic      = "factory/plant1/line1"
 s3_bucket_name = "dev-iot-telemetry-storage"

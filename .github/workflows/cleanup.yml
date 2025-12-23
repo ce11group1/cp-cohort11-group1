@@ -1,0 +1,31 @@
+name: Cleanup on PR Close
+
+on:
+  pull_request:
+    types: [closed] # Triggers when PR is Merged OR Closed without merging
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_CP }}
+          aws-region: us-east-1
+
+      - name: 🧹 Cleanup Logic
+        run: |
+          echo "PR #${{ github.event.number }} was closed."
+          # If you were using Per-PR environments, you would run:
+          # terraform destroy -var="env_name=pr-${{ github.event.number }}" -auto-approve
+
+          # For your SHARED env, you might just want to clean up old Docker images:
+          # aws ecr batch-delete-image --repository-name my-repo --image-ids imageTag=pr-${{ github.event.number }}

@@ -29,6 +29,10 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.lb_sg.id]
   subnets            = var.public_subnets
   tags               = merge(var.tags, { Name = "${var.name_prefix}-alb" })
+
+  # --- ADD THIS BLOCK ---
+  # This forces Terraform to wait until the SG is definitely created
+  depends_on = [aws_security_group.lb_sg]
 }
 
 resource "aws_lb_listener" "http" {

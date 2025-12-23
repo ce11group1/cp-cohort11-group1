@@ -19,23 +19,13 @@ resource "aws_s3_bucket" "terraform_state" {
   })
 }
 
-resource "aws_s3_bucket_versioning" "terraform_state" {
+# Enable Versioning (Only if creating)
+resource "aws_s3_bucket_versioning" "enabled" {
   count  = var.create_backend_resources ? 1 : 0
   bucket = aws_s3_bucket.terraform_state[0].id
 
   versioning_configuration {
     status = "Enabled"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
-  count  = var.create_backend_resources ? 1 : 0
-  bucket = aws_s3_bucket.terraform_state[0].id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
   }
 }
 

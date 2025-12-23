@@ -1,0 +1,64 @@
+graph TD
+    user((User / Admin))
+    
+    subgraph "AWS Cloud (Region: us-east-1)"
+        
+        subgraph "VPC & Networking"
+            ALB[("Application Load Balancer<br/>(Port 80)")]
+            IGW[Internet Gateway]
+        end
+
+        subgraph "ECS Cluster (Fargate)"
+            subgraph "ECS Task: IoT Simulator Stack"
+                Init[("Init Container<br/>(Downloads Certs & Configs)")]
+                Sim[("IoT Simulator<br/>(Python Script)")]
+                Prom[("Prometheus<br/>(Metrics Scraper)")]
+                Graf[("Grafana<br/>(Dashboard)")]
+            end
+        end
+
+        subgraph "IoT Core & Rules Engine"
+            IoTCore["AWS IoT Core<br/>(MQTT Broker)"]
+            IoTRule["IoT Rule<br/>(SELECT * FROM 'factory/#')"]
+        end
+
+        subgraph "Storage Layer"
+            S3_Tel[("S3 Telemetry Bucket<br/>(Data Storage)")]
+            S3_Conf[("S3 Config/Cert Bucket<br/>(Certs & Dashboards)")]
+            Dynamo[("DynamoDB<br/>(Terraform Locks)")]
+        end
+
+        CW[("CloudWatch Logs")]
+
+    end
+
+    %% Networking Flow
+    user -- "HTTP (Grafana)" --> ALB
+    ALB -- "Forward :3000" --> Graf
+    ALB -- "Forward :9090" --> Prom
+    
+    %% ECS Internal Flow
+    Init -- "1. Pulls Files" --> S3_Conf
+    Init -.-> Sim
+    Init -.-> Prom
+    Init -.-> Graf
+    Prom -- "Scrapes :9100" --> Sim
+    Graf -- "Queries" --> Prom
+
+    %% IoT Data Flow
+    Sim -- "MQTT (TLS 8883)" --> IoTCore
+    IoTCore -- "Triggers" --> IoTRule
+    IoTRule -- "PutObject (JSON)" --> S3_Tel
+    
+    %% Logging
+    IoTRule -.-> CW
+    Sim -.-> CW
+
+    %% Styling
+    style Sim fill:#dae8fc,stroke:#6c8ebf
+    style IoTCore fill:#fff2cc,stroke:#d6b656
+    style S3_Tel fill:#ffe6cc,stroke:#d79b00
+    style S3_Conf fill:#ffe6cc,stroke:#d79b00
+    style Graf fill:#f8cecc,stroke:#b85450
+    style Prom fill:#e1d5e7,stroke:#9673a6
+    style ALB fill:#d5e8d4,stroke:#82b366

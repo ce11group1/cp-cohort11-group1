@@ -33,16 +33,16 @@ Core Components:
 
 ## 3. Technology Stack & Resources Used
 
-| Resource / Tool | Technology          | Reason for Selection (Justification)                                                                 |
-|-----------------|---------------------|------------------------------------------------------------------------------------------------------|
-| IaC             | Terraform           | Modular infrastructure management; state locking via DynamoDB ensures team collaboration safety.    |
+| Resource / Tool | Technology          | Reason for Selection (Justification)                                                                                           |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| IaC             | Terraform           | Modular infrastructure management; state locking via DynamoDB ensures team collaboration safety.                               |
 | Compute         | AWS ECS (Fargate)   | Serverless container execution removes the need to manage EC2 instances/OS patching; supports sidecar containers (Prometheus). |
-| Connectivity    | AWS IoT Core        | Fully managed MQTT broker that handles mutual TLS authentication and scales automatically to millions of messages. |
-| Storage         | AWS S3              | Cost-effective storage for telemetry logs (via IoT Rules) and dynamic configuration files for the containers. |
-| Visualization   | Grafana             | Industry-standard visualization tool; deployed as a container to provide custom dashboards for IoT metrics. |
-| Monitoring      | Prometheus          | Scrapes metrics from the simulator application locally within the ECS task, ensuring low latency monitoring. |
-| Networking      | AWS ALB             | Distributes incoming traffic to the Grafana container and provides a static DNS endpoint.           |
-| Security        | AWS Secrets Manager | Securely manages sensitive credentials (SMTP passwords for Grafana alerts) without hardcoding them in Terraform. |
+| Connectivity    | AWS IoT Core        | Fully managed MQTT broker that handles mutual TLS authentication and scales automatically to millions of messages.             |
+| Storage         | AWS S3              | Cost-effective storage for telemetry logs (via IoT Rules) and dynamic configuration files for the containers.                  |
+| Visualization   | Grafana             | Industry-standard visualization tool; deployed as a container to provide custom dashboards for IoT metrics.                    |
+| Monitoring      | Prometheus          | Scrapes metrics from the simulator application locally within the ECS task, ensuring low latency monitoring.                   |
+| Networking      | AWS ALB             | Distributes incoming traffic to the Grafana container and provides a static DNS endpoint.                                      |
+| Security        | AWS Secrets Manager | Securely manages sensitive credentials (SMTP passwords for Grafana alerts) without hardcoding them in Terraform.               |
 
 ---
 
@@ -105,10 +105,10 @@ factory/simulator
 
 ### Prerequisites
 
-- **Terraform** (v1.9.5 or later)  
-- **AWS CLI** (v2.x) – configured via `aws configure` (Region: `us-east-1`)  
-- **Docker Desktop** – running (required for building the simulator image)  
-- **Git** – for version control  
+- **Terraform** (v1.9.5 or later)
+- **AWS CLI** (v2.x) – configured via `aws configure` (Region: `us-east-1`)
+- **Docker Desktop** – running (required for building the simulator image)
+- **Git** – for version control
 - Appropriate AWS permissions to manage IAM, ECS, IoT, S3, ALB, Secrets Manager, and DynamoDB.
 
 ---
@@ -264,14 +264,14 @@ This project adheres to strict security standards and cloud-native governance be
 
 ### Network Isolation
 
-- Security Groups act as a firewall.  
+- Security Groups act as a firewall.
 - The ECS task accepts traffic only from the Load Balancer on:
   - Port 3000 (Grafana)
   - Port 9090 (Prometheus, via ALB path-based routing)
 
 ### Secrets Management
 
-- Sensitive credentials, such as SMTP passwords for Grafana alerting, are never stored in plain text.  
+- Sensitive credentials, such as SMTP passwords for Grafana alerting, are never stored in plain text.
 - They are managed via AWS Secrets Manager and injected as environment variables at runtime.
 
 ### Data Protection
@@ -284,7 +284,7 @@ This project adheres to strict security standards and cloud-native governance be
 
 ### Infrastructure State Management
 
-- Terraform state is stored remotely in S3 with DynamoDB locking enabled.  
+- Terraform state is stored remotely in S3 with DynamoDB locking enabled.
 - This prevents race conditions and state corruption during concurrent deployments by multiple team members.
 
 ### Auditability
@@ -318,8 +318,9 @@ This project adheres to strict security standards and cloud-native governance be
 
 ---
 
-## 10. Security & Credentials Configuration  
-*(Only for Standalone Mode / Local Testing / Non-CI-CD Flow)*
+## 10. Security & Credentials Configuration
+
+_(Only for Standalone Mode / Local Testing / Non-CI-CD Flow)_
 
 > **Important Context:**  
 > This configuration is intended only for standalone testing.  
@@ -336,8 +337,8 @@ You must manually copy the required X.509 certificate files into the local Terra
 terraform/resources/certs/
 ```
 
-- `AmazonRootCA1.pem`  
-- `device-certificate.pem.crt`  
+- `AmazonRootCA1.pem`
+- `device-certificate.pem.crt`
 - `private.pem.key`
 
 These files are protected by `.gitignore`.
@@ -356,8 +357,8 @@ chmod +x create_keypair.sh
 
 **Output:**
 
-- Creates `grp1-ec2-keypair` in AWS.  
-- Saves `grp1-ec2-keypair.pem` in the current directory.  
+- Creates `grp1-ec2-keypair` in AWS.
+- Saves `grp1-ec2-keypair.pem` in the current directory.
 - Protected by `.gitignore` (`*.pem` ignored).
 
 ### C. Application Secrets (Grafana SMTP)
@@ -409,7 +410,7 @@ SECRET_STRING='{
 
 **Resolution:**
 
-- Check CloudWatch Logs for the ECS task (e.g., `/ecs/iot-simulator`).  
+- Check CloudWatch Logs for the ECS task (e.g., `/ecs/iot-simulator`).
 - Confirm containers start correctly and health checks are properly configured.
 
 ---
@@ -418,19 +419,19 @@ SECRET_STRING='{
 
 **Symptoms:**
 
-- Container exits repeatedly.  
+- Container exits repeatedly.
 - Errors show missing certificates or S3 access failures.
 
 **Likely Causes:**
 
-- Missing certificates in S3.  
-- Incorrect S3 object names or paths.  
+- Missing certificates in S3.
+- Incorrect S3 object names or paths.
 - ECS Task Role missing `s3:GetObject` permission.
 
 **Resolution:**
 
-- Verify S3 keys match expected names.  
-- Confirm Task Role’s S3 permissions.  
+- Verify S3 keys match expected names.
+- Confirm Task Role’s S3 permissions.
 - Re-run Terraform if bucket/object provisioning changed.
 
 ---
@@ -439,20 +440,20 @@ SECRET_STRING='{
 
 **Symptoms:**
 
-- Dashboards load but show no data.  
+- Dashboards load but show no data.
 - Prometheus targets may be down.
 
 **Possible Causes:**
 
-- Prometheus not scraping the simulator.  
-- Port or path misconfiguration.  
+- Prometheus not scraping the simulator.
+- Port or path misconfiguration.
 - Init container failed to write proper Prometheus configuration.
 
 **Resolution:**
 
-- Check Prometheus targets at `/prometheus/targets`.  
-- Verify simulator metrics endpoint is up.  
-- Review init container logs for Prometheus config generation.  
+- Check Prometheus targets at `/prometheus/targets`.
+- Verify simulator metrics endpoint is up.
+- Review init container logs for Prometheus config generation.
 - Confirm ECS Security Groups allow internal communication.
 
 ---
@@ -461,14 +462,14 @@ SECRET_STRING='{
 
 **Possible Causes:**
 
-- IAM roles (execution / task role) missing permissions.  
-- No available IPs in subnets.  
+- IAM roles (execution / task role) missing permissions.
+- No available IPs in subnets.
 - Network configuration issues (subnets, routing).
 
 **Resolution:**
 
-- Check ECS events for the service.  
-- Validate IAM roles and policies.  
+- Check ECS events for the service.
+- Validate IAM roles and policies.
 - Ensure subnets are correctly configured and routable.
 
 ---
@@ -477,15 +478,15 @@ SECRET_STRING='{
 
 **Possible Causes:**
 
-- IoT Topic Rule misconfigured.  
-- IAM role for the rule missing S3 `PutObject` permission.  
+- IoT Topic Rule misconfigured.
+- IAM role for the rule missing S3 `PutObject` permission.
 - S3 bucket policy not allowing IoT service principal.
 
 **Resolution:**
 
-- Verify IoT Rule SQL (e.g., `SELECT * FROM 'factory/simulator/#'`).  
-- Confirm IoT Rule’s IAM role and attached policy.  
-- Check S3 bucket policy for `Principal: { Service: "iot.amazonaws.com" }`.  
+- Verify IoT Rule SQL (e.g., `SELECT * FROM 'factory/simulator/#'`).
+- Confirm IoT Rule’s IAM role and attached policy.
+- Check S3 bucket policy for `Principal: { Service: "iot.amazonaws.com" }`.
 - Use IoT logging to CloudWatch for rule execution errors (if enabled).
 
 ---
@@ -494,14 +495,14 @@ SECRET_STRING='{
 
 **Possible Causes:**
 
-- `s3_config` module did not upload files.  
-- Init container failed to download or place files correctly.  
+- `s3_config` module did not upload files.
+- Init container failed to download or place files correctly.
 - Grafana provisioning paths are incorrect.
 
 **Resolution:**
 
-- Confirm objects exist in the config S3 bucket.  
-- Check init container logs for download and file write steps.  
+- Confirm objects exist in the config S3 bucket.
+- Check init container logs for download and file write steps.
 - Validate Grafana’s config and provisioning folder paths inside the container.
 
 ---
@@ -541,14 +542,15 @@ aws dynamodb create-table \
 **Context:**  
 The AWS lab environment was reset, deleting external dependencies (Secrets, Key Pairs) that Terraform does not manage directly.
 
-**Symptom:**  
-- Potential `ResourceInitializationError` in ECS (due to missing secrets).  
+**Symptom:**
+
+- Potential `ResourceInitializationError` in ECS (due to missing secrets).
 - EC2 creation failure (due to missing key pair) in earlier iterations.
 
 **Resolution:**  
 Established a **Rehydration Procedure** using helper scripts:
 
-- Ran `./ensure-grafana-smtp-secret.sh` to restore the `grafana/smtp` secret.  
+- Ran `./ensure-grafana-smtp-secret.sh` to restore the `grafana/smtp` secret.
 - Ran `./create_keypair.sh` to restore the `grp1-ec2-keypair`.
 
 ---
@@ -560,7 +562,7 @@ Accessing `http://<ALB_DNS>/prometheus` resulted in a Grafana 404 page instead o
 
 **Root Cause:**
 
-- The ALB Listener Rules had conflicting priorities.  
+- The ALB Listener Rules had conflicting priorities.
 - The Grafana "catch-all" rule (`path_pattern = "/*"`) had a higher priority (lower number) than the Prometheus rule (`path_pattern = "/prometheus/*"`), shadowing it.
 
 **Resolution:**
@@ -579,28 +581,35 @@ Accessing `http://<ALB_DNS>/prometheus` resulted in a Grafana 404 page instead o
 
 ---
 
-## 13. Future Enhancements (Roadmap)
+## 13. Future Roadmap & Improvements
 
-- **Private Subnets:**  
-  Move ECS tasks to private subnets with NAT Gateways for enhanced network security (currently in public subnets for cost optimization).
+While the current deployment is fully functional and automated, the following enhancements are planned to further harden security, optimize costs, and improve scalability.
 
-- **HTTPS/SSL:**  
-  Attach an ACM Certificate to the Load Balancer to enable HTTPS (port 443) instead of HTTP (port 80).  
-  - Request a certificate in ACM.  
-  - Attach it to the ALB Listener on Port 443.  
-  - Enable secure browser access (padlock icon).
+### 🔐 Security & Network Hardening
 
-- **CI/CD Pipeline:**  
-  Fully automate the `terraform apply` and Docker build/push commands via GitHub Actions or AWS CodePipeline.
+- **HTTPS/SSL Enforcement:** Secure the application by attaching an AWS Certificate Manager (ACM) certificate to the Application Load Balancer (ALB). This will enable encrypted traffic on port 443 and ensure a secure browsing experience.
+- **Private Subnet Architecture:** Move ECS tasks and backend resources to private subnets with NAT Gateways. This isolates compute resources from direct internet access, significantly reducing the attack surface.
+- **AWS WAF (Web Application Firewall):** Attach AWS WAF to the ALB to protect the application against common web exploits (SQL injection, XSS) and malicious bot traffic.
+- **Environment-Specific IoT Certificates:** Implement distinct AWS IoT Certificates for `Dev` and `Prod` environments. This ensures complete cryptographic isolation, preventing a compromised development key from affecting production.
+- **Secret Rotation:** Implement AWS Secrets Manager with automatic rotation policies for database credentials and Grafana SMTP passwords.
 
-- **Autoscaling for ECS:**  
-  Automatically scale ECS tasks based on CPU, memory, or custom metrics.
+### 🏗️ Architecture & Scalability
 
-- **Alerting Enhancements:**  
-  - Integrate Prometheus Alertmanager.  
-  - Use SNS, email, or chat notifications.
+- **ECS Autoscaling:** Configure Service Auto Scaling policies to automatically adjust the number of ECS tasks based on real-time CPU or Memory utilization, ensuring performance during traffic spikes.
+- **Decoupling with SQS/SNS:** Introduce Amazon SQS (Simple Queue Service) between the AWS IoT Core rules and the backend processing. This will buffer traffic bursts and improve system resilience.
+- **Strict IoT Topic Isolation:** Enforce strict topic prefixes (e.g., `iot/prod/...` vs `iot/dev/...`) via IoT Policies to preventing accidental data crossover between simulator testing and production dashboards.
+- **Multi-AZ Database:** Upgrade the backend state storage to a Multi-AZ DynamoDB or RDS configuration to ensure high availability and failover capabilities for Production.
 
-- **S3 Lifecycle Policies:**  
-  Configure lifecycle policies for telemetry retention and cost optimization (e.g., transition to Glacier or expire old data).
+### 🤖 DevOps & Observability
+
+- **Alerting Enhancements:** Integrate Prometheus Alertmanager to route critical alerts to email, Slack, or SNS topics, ensuring faster incident response times.
+- **Terraform Drift Detection:** Implement a scheduled GitHub Action to run `terraform plan` periodically. This alerts the team to manual changes (Configuration Drift) made in the AWS Console, preventing "Zombie Resource" conflicts.
+- **Automated Rollbacks:** Enhance the ECS deployment strategy to automatically roll back to the previous stable image if a new task fails health checks within the first 5 minutes.
+- **S3 Lifecycle Policies:** Configure lifecycle rules for telemetry and state buckets to automatically transition old data to Amazon S3 Glacier or expire it, optimizing long-term storage costs.
+- **Cost-Optimized Logging:** Configure distinct CloudWatch Log retention policies via Terraform variables (e.g., 3 days for Dev to save costs, 30 days for Prod for auditing).
+
+### 🧪 Testing & Validation
+
+- **Load Testing:** Integrate testing tools like k6 or JMeter into the pipeline to simulate high-throughput IoT telemetry traffic before promoting code to Production.
 
 ---

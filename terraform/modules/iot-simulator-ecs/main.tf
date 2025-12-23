@@ -202,7 +202,9 @@ resource "aws_ecs_task_definition" "main" {
 # =========================================================
 
 resource "aws_lb_target_group" "grafana" {
-  name        = "${var.name_prefix}-graf-tg"
+  # CHANGE 1: Use name_prefix (short) instead of fixed name
+  name_prefix = "graf-"
+
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -215,6 +217,11 @@ resource "aws_lb_target_group" "grafana" {
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
+  }
+
+  # CHANGE 2: Add this lifecycle block
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -236,7 +243,9 @@ resource "aws_lb_listener_rule" "grafana_rule" {
 
 # Target Group: Prometheus
 resource "aws_lb_target_group" "prometheus" {
-  name        = "${var.name_prefix}-prom-tg"
+  # CHANGE 1: Use name_prefix (short) instead of fixed name
+  name_prefix = "prom-"
+
   port        = 9090
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -249,6 +258,11 @@ resource "aws_lb_target_group" "prometheus" {
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
+  }
+
+  # CHANGE 2: Add this lifecycle block
+  lifecycle {
+    create_before_destroy = true
   }
 }
 

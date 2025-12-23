@@ -35,11 +35,11 @@ cert_files = {
   private_key = "private.pem.key"
 }
 
-create_buckets = true
-#create_backend_resources = false
+create_buckets           = false
+create_backend_resources = false
 
 iot_topic      = "factory/plant1/line1"
-s3_bucket_name = "dev-iot-telemetry-storage"
+s3_bucket_name = "prod-iot-telemetry-storage"
 
 enable_cert_upload         = true
 enable_grafana_smtp_secret = true
