@@ -1,4 +1,4 @@
-# env/dev/main.tf
+# env/prod/main.tf
 
 locals {
   common_tags = {

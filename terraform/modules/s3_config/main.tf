@@ -68,6 +68,25 @@ resource "aws_s3_object" "iot_script" {
   etag   = filemd5("${local.resources_path}/app/iot-simulator.py")
 }
 
+# # 4. Upload Certificates
+# resource "aws_s3_object" "certs" {
+#   for_each = var.enable_cert_upload ? toset([
+#     var.iot_cert_files.root_ca,
+#     var.iot_cert_files.device_cert,
+#     var.iot_cert_files.private_key
+#   ]) : toset([])
+
+#   # bucket = aws_s3_bucket.config.bucket
+#   # key    = "certs/${each.value}"
+
+#   bucket = local.cert_bucket_id
+#   key    = each.value
+#   source = "${local.resources_path}/certs/${each.value}"
+#   etag   = filemd5("${local.resources_path}/certs/${each.value}")
+
+#   content_type = "application/octet-stream"
+# }
+
 # 4. Upload Certificates
 resource "aws_s3_object" "certs" {
   for_each = var.enable_cert_upload ? var.cert_files : {}
