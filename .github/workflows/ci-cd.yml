@@ -236,7 +236,7 @@ jobs:
       - name: 📝 Generate Verbose Dashboard
         if: always()
         run: |
-          echo "# 🚀 Deployment Status (PROD)" >> $GITHUB_STEP_SUMMARY
+          echo "# 🚀 Deployment Status (DEV)" >> $GITHUB_STEP_SUMMARY
 
           echo "| Service | Access Link | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
@@ -421,7 +421,7 @@ jobs:
 
       - name: Force ECS Update
         run: |
-          echo "Updating Service: $ECS_SERVICE..."
+          echo "Updating Service: $ECS_SERVICE in Cluster: $ECS_CLUSTER"
           aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --force-new-deployment
 
       # --- 🔄 RELIABILITY: RETRY LOOP ---
