@@ -236,23 +236,24 @@ jobs:
       - name: 📝 Generate Verbose Dashboard
         if: always()
         run: |
-          echo "# 🚀 Deployment Status (DEV)" >> $GITHUB_STEP_SUMMARY
+          echo "# 🚀 Deployment Status (PROD)" >> $GITHUB_STEP_SUMMARY
 
           echo "| Service | Access Link | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
 
+          # Check if the ALB URL exists
           if [ -z "$ALB_URL" ] || [ "$ALB_URL" == "N/A" ]; then
-             echo "| 🏭 **IoT App** | 🔴 *Missing ALB* | ❌ Terraform Error |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🏭 **IoT Platform** | 🔴 *Missing ALB* | ❌ Terraform Error |" >> $GITHUB_STEP_SUMMARY
           else
-             echo "| 🏭 **IoT App** | [**Open Application**]($ALB_URL) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
-             echo "| 📊 **Grafana** | 🔴 *IP Not Found* | ⚠️ Task Starting/Private |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | 🔴 *IP Not Found* | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
-          else
-             echo "| 📊 **Grafana** | [**Open Grafana**](http://$TASK_IP:3000) | ✅ User: \`admin\` |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | [**Open Prometheus**](http://$TASK_IP:9090) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+              # Check if the Tasks are running (via TASK_IP check)
+              if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
+                  echo "| 📊 **Grafana** | [**Open via ALB**]($ALB_URL/) | ⚠️ Task Starting... |" >> $GITHUB_STEP_SUMMARY
+                  echo "| 📈 **Prometheus** | [**Open via ALB**]($ALB_URL/prometheus/) | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
+              else
+                  # SUCCESS: Route everything through ALB with proper paths
+                  echo "| 📊 **Grafana** | [**Open Grafana**]($ALB_URL/) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
+                  echo "| 📈 **Prometheus** | [**Open Prometheus**]($ALB_URL/prometheus/) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+              fi
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -456,22 +457,22 @@ jobs:
         if: always()
         run: |
           echo "# 🚀 Deployment Status (PROD)" >> $GITHUB_STEP_SUMMARY
-
           echo "| Service | Access Link | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
 
+          # 1. Check the Load Balancer
           if [ -z "$ALB_URL" ] || [ "$ALB_URL" == "N/A" ]; then
-             echo "| 🏭 **IoT App** | 🔴 *Missing ALB* | ❌ Terraform Error |" >> $GITHUB_STEP_SUMMARY
+             echo "| 🏭 **IoT Platform** | 🔴 *ALB Not Ready* | ❌ Check Terraform Logs |" >> $GITHUB_STEP_SUMMARY
           else
-             echo "| 🏭 **IoT App** | [**Open Application**]($ALB_URL) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
-             echo "| 📊 **Grafana** | 🔴 *IP Not Found* | ⚠️ Task Starting/Private |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | 🔴 *IP Not Found* | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
-          else
-             echo "| 📊 **Grafana** | [**Open Grafana**](http://$TASK_IP:3000) | ✅ User: \`admin\` |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | [**Open Prometheus**](http://$TASK_IP:9090) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+             # 2. Check if the Tasks are actually running (via TASK_IP)
+             if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
+                echo "| 📊 **Grafana** | [**Open via ALB**]($ALB_URL/) | ⚠️ Task Starting/Private |" >> $GITHUB_STEP_SUMMARY
+                echo "| 📈 **Prometheus** | [**Open via ALB**]($ALB_URL/prometheus/) | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
+             else
+                # 3. Everything is green
+                echo "| 📊 **Grafana** | [**Open Grafana**]($ALB_URL/) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
+                echo "| 📈 **Prometheus** | [**Open Prometheus**]($ALB_URL/prometheus/) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+             fi
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
