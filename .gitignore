@@ -44,3 +44,6 @@ grp1-ec2-keypair.pem
 
 # Optionally ignore certs if they contain internal info, though usually public
 *.crt
+
+.terraform.lock.hcl
+**/.terraform.lock.hcl

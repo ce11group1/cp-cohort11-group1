@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [dev, main]
   push:
-    branches: [dev, main]
+    branches: [dev, main, test-prod-deployment]
   workflow_dispatch:
 
 permissions:
@@ -241,18 +241,21 @@ jobs:
           echo "| Service | Access Link | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
 
+          # Check if the ALB URL exists
           if [ -z "$ALB_URL" ] || [ "$ALB_URL" == "N/A" ]; then
-             echo "| 🏭 **IoT App** | 🔴 *Missing ALB* | ❌ Terraform Error |" >> $GITHUB_STEP_SUMMARY
+              echo "| 🏭 **IoT Platform** | 🔴 *Missing ALB* | ❌ Terraform Error |" >> $GITHUB_STEP_SUMMARY
           else
+             # IoT App Main Link
              echo "| 🏭 **IoT App** | [**Open Application**]($ALB_URL) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
-             echo "| 📊 **Grafana** | 🔴 *IP Not Found* | ⚠️ Task Starting/Private |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | 🔴 *IP Not Found* | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
-          else
-             echo "| 📊 **Grafana** | [**Open Grafana**](http://$TASK_IP:3000) | ✅ User: \`admin\` |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | [**Open Prometheus**](http://$TASK_IP:9090) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+              # Check if the Tasks are running (via TASK_IP check)
+              if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
+                  echo "| 📊 **Grafana** | [**Open via ALB**]($ALB_URL/) | ⚠️ Task Starting... |" >> $GITHUB_STEP_SUMMARY
+                  echo "| 📈 **Prometheus** | [**Open via ALB**]($ALB_URL/prometheus/) | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
+              else
+                  # SUCCESS: Route everything through ALB with proper paths
+                  echo "| 📊 **Grafana** | [**Open Grafana**]($ALB_URL/) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
+                  echo "| 📈 **Prometheus** | [**Open Prometheus**]($ALB_URL/prometheus/) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+              fi
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -276,7 +279,8 @@ jobs:
     name: Terraform Plan PROD
     runs-on: ubuntu-latest
     needs: terraform-ci
-    if: github.ref_name == 'main'
+    # MODIFIED: Allow the test branch to run the plan
+    if: github.ref_name == 'main' || github.ref_name == 'test-prod-deployment'
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v2
@@ -320,7 +324,8 @@ jobs:
     name: Terraform Apply PROD
     runs-on: ubuntu-latest
     needs: plan-prod
-    if: github.event_name == 'push' && github.ref_name == 'main'
+    # MODIFIED: Allow 'push' events from main OR our test branch
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'test-prod-deployment')
     environment: prod
     steps:
       - uses: actions/checkout@v4
@@ -380,6 +385,8 @@ jobs:
     name: Deploy App (PROD)
     runs-on: ubuntu-latest
     needs: apply-prod
+    # MODIFIED: Allow deploy from main OR our test branch
+    if: github.ref_name == 'main' || github.ref_name == 'test-prod-deployment'
     environment: prod
     steps:
       - uses: actions/checkout@v4
@@ -414,7 +421,7 @@ jobs:
 
       - name: Force ECS Update
         run: |
-          echo "Updating Service: $ECS_SERVICE..."
+          echo "Updating Service: $ECS_SERVICE in Cluster: $ECS_CLUSTER"
           aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --force-new-deployment
 
       # --- 🔄 RELIABILITY: RETRY LOOP ---
@@ -452,22 +459,24 @@ jobs:
         if: always()
         run: |
           echo "# 🚀 Deployment Status (PROD)" >> $GITHUB_STEP_SUMMARY
-
           echo "| Service | Access Link | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
 
+          # 1. Check the Load Balancer
           if [ -z "$ALB_URL" ] || [ "$ALB_URL" == "N/A" ]; then
-             echo "| 🏭 **IoT App** | 🔴 *Missing ALB* | ❌ Terraform Error |" >> $GITHUB_STEP_SUMMARY
+             echo "| 🏭 **IoT Platform** | 🔴 *ALB Not Ready* | ❌ Check Terraform Logs |" >> $GITHUB_STEP_SUMMARY
           else
+             # IoT App Main Link
              echo "| 🏭 **IoT App** | [**Open Application**]($ALB_URL) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
-             echo "| 📊 **Grafana** | 🔴 *IP Not Found* | ⚠️ Task Starting/Private |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | 🔴 *IP Not Found* | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
-          else
-             echo "| 📊 **Grafana** | [**Open Grafana**](http://$TASK_IP:3000) | ✅ User: \`admin\` |" >> $GITHUB_STEP_SUMMARY
-             echo "| 📈 **Prometheus** | [**Open Prometheus**](http://$TASK_IP:9090) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+             # 2. Check if the Tasks are actually running (via TASK_IP)
+             if [ "$TASK_IP" == "N/A" ] || [ -z "$TASK_IP" ]; then
+                echo "| 📊 **Grafana** | [**Open via ALB**]($ALB_URL/) | ⚠️ Task Starting/Private |" >> $GITHUB_STEP_SUMMARY
+                echo "| 📈 **Prometheus** | [**Open via ALB**]($ALB_URL/prometheus/) | ⚠️ Check Console |" >> $GITHUB_STEP_SUMMARY
+             else
+                # 3. Everything is green
+                echo "| 📊 **Grafana** | [**Open Grafana**]($ALB_URL/) | ✅ Active |" >> $GITHUB_STEP_SUMMARY
+                echo "| 📈 **Prometheus** | [**Open Prometheus**]($ALB_URL/prometheus/) | ✅ Metrics Active |" >> $GITHUB_STEP_SUMMARY
+             fi
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY

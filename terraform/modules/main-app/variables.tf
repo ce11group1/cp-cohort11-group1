@@ -133,3 +133,9 @@ variable "enable_grafana_smtp_secret" {
 #     private_key = string
 #   })
 # }
+
+variable "vpc_id" {
+  description = "The VPC ID from the root environment"
+  type        = string
+  default     = null # Optional: allows it to be empty if needed
+}

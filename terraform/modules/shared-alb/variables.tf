@@ -13,5 +13,9 @@ variable "name_prefix" {
   default     = "" # Optional default to prevent errors if you miss it
 }
 
-variable "vpc_id" {}
+variable "vpc_id" {
+  description = "The ID of the VPC where the security group and ALB will be created"
+  type        = string
+}
+
 variable "public_subnets" { type = list(string) }

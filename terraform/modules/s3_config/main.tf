@@ -16,20 +16,20 @@ resource "aws_s3_bucket" "cert_bucket" {
 }
 
 # 2. Data Sources (for when buckets already exist)
-data "aws_s3_bucket" "config_bucket" {
+data "aws_s3_bucket" "imported_config_bucket" {
   count  = var.create_buckets ? 0 : 1
   bucket = var.config_s3_bucket
 }
 
-data "aws_s3_bucket" "cert_bucket" {
+data "aws_s3_bucket" "imported_cert_bucket" {
   count  = var.create_buckets ? 0 : 1
   bucket = var.cert_s3_bucket
 }
 
 locals {
   # Resolve bucket IDs dynamically
-  config_bucket_id = var.create_buckets ? aws_s3_bucket.config_bucket[0].id : data.aws_s3_bucket.config_bucket[0].id
-  cert_bucket_id   = var.create_buckets ? aws_s3_bucket.cert_bucket[0].id : data.aws_s3_bucket.cert_bucket[0].id
+  config_bucket_id = var.create_buckets ? aws_s3_bucket.config_bucket[0].id : data.aws_s3_bucket.imported_config_bucket[0].id
+  cert_bucket_id   = var.create_buckets ? aws_s3_bucket.cert_bucket[0].id : data.aws_s3_bucket.imported_cert_bucket[0].id
 
   # Path to your resources folder (Up 2 levels from modules/s3_config)
   resources_path = "${path.module}/../../resources"

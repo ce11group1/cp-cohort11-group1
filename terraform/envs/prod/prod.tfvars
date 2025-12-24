@@ -35,7 +35,7 @@ cert_files = {
   private_key = "private.pem.key"
 }
 
-create_buckets           = false
+create_buckets           = true
 create_backend_resources = true
 
 iot_topic      = "factory/plant1/line1"
